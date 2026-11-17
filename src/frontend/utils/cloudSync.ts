@@ -10,6 +10,7 @@ import { hasNewerUpdate, isMainWindow, newToast, setStatus, wait } from "./commo
 import { confirmCustom } from "./popup"
 import { getSyncedSettings, save } from "./save"
 import { SocketHelper } from "./SocketHelper"
+import { churchAppsCloudSync } from "../../extensions/church/features"
 import { contentProviderSync } from "./startup"
 
 let pendingSync: { startup: boolean } | null = null
@@ -27,6 +28,11 @@ function syncFinished() {
 }
 
 export async function setupCloudSync(auto: boolean = false) {
+    if (!churchAppsCloudSync) {
+        syncFinished()
+        return
+    }
+
     queueProviderSync(auto)
 
     if (get(cloudSyncData).enabled === false) {

@@ -5,6 +5,7 @@ import { Main } from "../../types/IPC/Main"
 import type { Dictionary } from "../../types/Settings"
 import { sortByName } from "../components/helpers/array"
 import { sendMain } from "../IPC/main"
+import { brandDictionary } from "../../extensions/church/features"
 import { dictionary, language, localeDirection } from "../stores"
 import { isMainWindow } from "./common"
 import { languageFlags, languages, replace } from "./languageData"
@@ -61,7 +62,7 @@ function setLanguage(locale = "", init = false) {
             })
         }
 
-        dictionary.set(messages)
+        dictionary.set(brandDictionary(messages))
         if (init || !isMainWindow()) return
 
         language.set(locale)

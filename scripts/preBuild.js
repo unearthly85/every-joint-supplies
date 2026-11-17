@@ -1,4 +1,4 @@
-const { readdirSync, existsSync, lstatSync, unlinkSync, rmdirSync, readFileSync, writeFileSync, copyFileSync } = require("fs")
+const { readdirSync, existsSync, lstatSync, unlinkSync, rmdirSync, readFileSync, writeFileSync, copyFileSync, mkdirSync } = require("fs")
 const { join } = require("path")
 
 // app build file paths
@@ -62,3 +62,24 @@ getPdfWorkerFile()
 const releaseRepo = process.env.GITHUB_REPOSITORY || "local"
 console.log("Built from repo:", releaseRepo)
 writeFileSync(join(__dirname, "..", "public", "release.json"), JSON.stringify({ repo: releaseRepo }))
+
+// Product name lives in src/extensions/church/product.json. Copy it where the
+// packaged app can read it, and refresh document titles marked data-ejs-product.
+const productSource = join(__dirname, "..", "src", "extensions", "church", "product.json")
+const product = JSON.parse(readFileSync(productSource, "utf8"))
+const brandDir = join(__dirname, "..", "public", "brand")
+mkdirSync(brandDir, { recursive: true })
+copyFileSync(productSource, join(brandDir, "product.json"))
+
+const titledPages = [
+    [join(__dirname, "..", "public", "index.html"), ""],
+    [join(__dirname, "..", "public", "loading.html"), ""],
+    [join(__dirname, "..", "src", "server", "stage", "index.html"), " Stage"],
+    [join(__dirname, "..", "src", "server", "remote", "index.html"), " Remote"]
+]
+for (const [file, suffix] of titledPages) {
+    const html = readFileSync(file, "utf8")
+    const name = `${product.productName}${suffix}`
+    const next = html.replace(/(<title\b[^>]*\bdata-ejs-product\b[^>]*>)[^<]*(<\/title>)/, `$1${name}$2`)
+    if (next !== html) writeFileSync(file, next)
+}

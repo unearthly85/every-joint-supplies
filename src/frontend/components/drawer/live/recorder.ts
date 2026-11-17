@@ -7,6 +7,7 @@ import { activeRecording, currentRecordingStream, outputs, special } from "../..
 import { newToast } from "../../../utils/common"
 import { send } from "../../../utils/request"
 import { checkFFmpeg } from "../../helpers/output"
+import { filePrefix } from "../../../../extensions/church/features"
 
 let mediaRecorder: MediaRecorder | null = null
 let recordedChunks: Blob[] = []
@@ -139,7 +140,7 @@ export function stopMediaRecorder(outputId?: string): Promise<void> {
 export function getRecordingFileName(label = "", extension = "webm"): string {
     const formattedLabel = label ? `${label.replace(/[\\/:*?"<>|]/g, "_")}_` : ""
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19)
-    return `FreeShow_${formattedLabel}${timestamp}.${extension}`
+    return `${filePrefix}_${formattedLabel}${timestamp}.${extension}`
 }
 
 async function handleStop() {

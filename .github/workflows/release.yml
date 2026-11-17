@@ -1,8 +1,6 @@
 name: Release
+# Publish stays off (P0-02). This workflow is manual, and `npm run release` passes --publish never.
 on:
-  push:
-    branches:
-      - "main"
   workflow_dispatch:
 
 jobs:

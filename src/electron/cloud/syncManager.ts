@@ -10,6 +10,7 @@ import { compressToZip, decompressZipStream, getZipModifiedDates } from "../data
 import { sendMain } from "../IPC/main"
 import { asyncPool, createFolder, deleteFile, deleteFolderAsync, doesPathExistAsync, getDataFolderPath, getFileStatsAsync, getTimePointString, loadShows, moveFileAsync, readFileAsync, readFolderAsync, writeFileAsync } from "../utils/files"
 import { clone, getMachineId } from "../utils/helpers"
+import { churchAppsCloudAllowed } from "../utils/productConfig"
 import { getChurchAppsSyncManager } from "./ChurchAppsSyncManager"
 import { SyncLedger, type Changes } from "./syncLedger"
 
@@ -18,7 +19,13 @@ const getManager = {
     churchApps: getChurchAppsSyncManager
 }
 
+function churchAppsSyncBlocked(id: SyncProviderId = "churchApps"): boolean {
+    return id === "churchApps" && !churchAppsCloudAllowed()
+}
+
 export async function canSync({ id }: { id: SyncProviderId } = { id: "churchApps" }): Promise<boolean> {
+    if (churchAppsSyncBlocked(id)) return false
+
     const provider = getManager[id]()
     if (!provider) return false
 
@@ -26,6 +33,8 @@ export async function canSync({ id }: { id: SyncProviderId } = { id: "churchApps
 }
 
 export async function getSyncTeams({ id }: { id: SyncProviderId } = { id: "churchApps" }): Promise<{ id: string; churchId: string; name: string }[]> {
+    if (churchAppsSyncBlocked(id)) return []
+
     const provider = getManager[id]()
     if (!provider) return []
 
@@ -33,6 +42,8 @@ export async function getSyncTeams({ id }: { id: SyncProviderId } = { id: "churc
 }
 
 export async function hasTeamData({ id, churchId, teamId }: { id: SyncProviderId; churchId: string; teamId: string }) {
+    if (churchAppsSyncBlocked(id)) return false
+
     const provider = getManager[id]()
     if (!provider) return false
 
@@ -67,6 +78,8 @@ function getMergeGuardKey(data: { id: SyncProviderId; churchId: string; teamId: 
 }
 
 export async function syncData(data: { id: SyncProviderId; churchId: string; teamId: string; method: "merge" | "read_only" | "upload" | "replace" }) {
+    if (churchAppsSyncBlocked(data.id)) return { success: false, error: "ChurchApps cloud sync is disabled in this build." }
+
     let readOnly = data.method === "read_only" || data.method === "replace" // never write to cloud
     let localMergedIn = false
     const changedFiles: string[] = [] // WIP write changes
@@ -529,6 +542,8 @@ export async function syncData(data: { id: SyncProviderId; churchId: string; tea
 }
 
 export async function restoreCloudBackup(data: { id: SyncProviderId; churchId: string; teamId: string }) {
+    if (churchAppsSyncBlocked(data.id)) return { success: false, error: "ChurchApps cloud sync is disabled in this build." }
+
     const provider = getManager[data.id]()
     if (!provider) return { success: false, error: "Sync provider not available" }
 

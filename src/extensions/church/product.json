@@ -1,0 +1,22 @@
+{
+    "productName": "Every Joint Supplies",
+    "npmName": "every-joint-supplies",
+    "appId": "app.everyjointsupplies",
+    "executableName": "EveryJointSupplies",
+    "artifactName": "EveryJointSupplies-${version}-${arch}.${ext}",
+    "filePrefix": "EveryJointSupplies",
+    "description": "Free, open-source worship presentation for churches: lyrics, scripture, slides, and stage display, with simple setup and no tech needed. Built on FreeShow.",
+    "author": "Every Joint Supplies contributors",
+    "repository": "https://github.com/unearthly85/every-joint-supplies",
+    "githubOwner": "unearthly85",
+    "githubRepo": "every-joint-supplies",
+    "upstreamName": "FreeShow",
+    "upstreamUrl": "https://github.com/ChurchApps/FreeShow",
+    "credit": "Based on FreeShow",
+    "verse": "Every joint supplies (Eph 4:16).",
+    "features": {
+        "churchAppsCloudSync": false,
+        "upstreamDonatePrompt": false,
+        "upstreamAnalytics": false
+    }
+}

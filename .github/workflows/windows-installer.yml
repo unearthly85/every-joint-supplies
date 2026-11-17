@@ -1,0 +1,101 @@
+name: Windows installer
+
+on:
+    pull_request:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+jobs:
+    checks:
+        name: Unit tests and lint
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out Git repository
+              uses: actions/checkout@v5
+
+            - name: Install Node.js and NPM
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 22
+
+            - name: Install libraries
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libfontconfig1-dev uuid-dev libltc-dev --fix-missing
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Unit tests
+              run: npm run test:unit
+
+            # Upstream already has a lint backlog (no-console, no-shadow, unused locals).
+            # Run the same checks their `npm run lint` uses, without --fix, and do not fail
+            # the installer on that backlog. New code under src/extensions/church is blocking.
+            - name: Lint electron
+              run: npx eslint -c config/linting/eslint.electron.json --ext .js,.ts src/electron
+              continue-on-error: true
+
+            - name: Lint frontend
+              run: npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/frontend
+              continue-on-error: true
+
+            - name: Lint svelte
+              run: npx eslint -c config/linting/eslint.svelte.js --ext .svelte src/frontend
+              continue-on-error: true
+
+            - name: Lint our extension
+              run: npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/extensions/church --ignore-pattern '**/*.test.ts'
+
+    installer:
+        name: Unsigned NSIS installer
+        needs: checks
+        runs-on: windows-latest
+        steps:
+            - name: Check out Git repository
+              uses: actions/checkout@v5
+
+            - name: Install Node.js and NPM
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 22
+
+            - name: Install Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install setuptools
+              run: pip install setuptools
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            # --publish never is required. electron-builder will upload a GitHub Release
+            # when it sees GITHUB_TOKEN on a runner unless publish is forced off.
+            # Signing turns on inside electron-builder.fork.cjs only when the secrets are non-empty.
+            - name: Package NSIS installer
+              env:
+                  WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+                  WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+                  CSC_LINK: ${{ secrets.CSC_LINK }}
+                  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+                  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+                  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+                  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+                  AZURE_CODE_SIGNING_ACCOUNT: ${{ secrets.AZURE_CODE_SIGNING_ACCOUNT }}
+                  AZURE_CERTIFICATE_PROFILE: ${{ secrets.AZURE_CERTIFICATE_PROFILE }}
+                  AZURE_CODE_SIGNING_ENDPOINT: ${{ secrets.AZURE_CODE_SIGNING_ENDPOINT }}
+              run: npx electron-builder --config config/building/electron-builder.fork.cjs --win nsis --publish never
+
+            - name: Upload installer
+              uses: actions/upload-artifact@v4
+              with:
+                  name: EveryJointSupplies-windows-nsis
+                  path: dist/*.exe
+                  if-no-files-found: error
+                  retention-days: 14

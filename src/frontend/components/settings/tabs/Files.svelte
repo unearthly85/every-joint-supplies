@@ -10,6 +10,7 @@
     import { translateText } from "../../../utils/language"
     import { save } from "../../../utils/save"
     import { convertAutosave } from "../../../values/autosave"
+    import { churchAppsCloudSync } from "../../../../extensions/church/features"
     import T from "../../helpers/T.svelte"
     import { getTimeFromInterval, joinTimeBig } from "../../helpers/time"
     import InputRow from "../../input/InputRow.svelte"
@@ -280,7 +281,9 @@
 <!-- cloud -->
 <Title label="settings.cloud" icon="cloud" title="cloud.info" />
 
-{#if !$providerConnections.churchApps || (!$special.churchAppsCloudOnly && !$cloudSyncData.enabled)}
+{#if !churchAppsCloudSync}
+    <p style="opacity: 0.8;">ChurchApps cloud sync is turned off. Shows and services stay on this computer.</p>
+{:else if !$providerConnections.churchApps || (!$special.churchAppsCloudOnly && !$cloudSyncData.enabled)}
     <InputRow>
         <MaterialButton on:click={() => contentProviderConnect("churchApps")} style="flex: 1;" icon="login">
             <T id="settings.connect_to" replace={["ChurchApps"]} />

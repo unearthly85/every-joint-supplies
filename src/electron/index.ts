@@ -3,6 +3,7 @@
 
 import type { Rectangle } from "electron"
 import { BrowserWindow, Menu, app, ipcMain, powerSaveBlocker, protocol, screen } from "electron"
+import { forkProduct } from "./utils/applyProductName"
 import { AUDIO, BLACKMAGIC, CLOUD, EXPORT, MAIN, NDI, OMT, OUTPUT, STARTUP } from "../types/Channels"
 import { Main } from "../types/IPC/Main"
 import { ToMain } from "../types/IPC/ToMain"
@@ -76,7 +77,7 @@ config.set("loaded", true)
 if (!config.get("loaded")) console.error("Could not get stored data!")
 
 // info
-console.info("Starting FreeShow...")
+console.info(`Starting ${forkProduct.productName}...`)
 if (!isProd) console.info("Building app! (This may take 5-40 seconds)")
 
 // set application menu
@@ -225,6 +226,7 @@ function createMain() {
 
     // create window
     mainWindow = new BrowserWindow({ ...mainOptions, ...options })
+    mainWindow.setTitle(forkProduct.productName)
 
     // ensure correct dimensions regardless of DPI scaling (without this, the window changed size each startup when scale was not 100%)
     mainWindow.setSize(options.width!, options.height!)

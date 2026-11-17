@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { credit, description, productName, repositoryUrl, upstreamName, upstreamUrl, verse } from "../../../../extensions/church/features"
     import { activePopup, version } from "../../../stores"
     import T from "../../helpers/T.svelte"
     import Link from "../../inputs/Link.svelte"
@@ -24,8 +25,8 @@
 
 <div style="text-align: center;">
     <div class="logo">
-        <img style="height: 35px;" src="./import-logos/freeshow.webp" alt="FreeShow-logo" draggable={false} />
-        <h1 style="color: var(--text);font-size: 1.7em;">FreeShow</h1>
+        <img style="height: 48px;" src="./icon.png" alt="" draggable={false} />
+        <h1 style="color: var(--text);font-size: 1.7em;">{productName}</h1>
     </div>
 
     <p style="font-size: 0.8em;margin-top: 2px;">
@@ -34,10 +35,8 @@
             <T id="about.check_updates" />
         </MaterialButton>
     </p>
-
-    <!-- <p>
-        <Link url="https://churchapps.org/">ChurchApps</Link>
-    </p> -->
+    <p style="font-size: 0.85em;opacity: 0.85;margin: 8px 0 0;">{description}</p>
+    <p style="font-size: 0.85em;opacity: 0.75;margin: 4px 0 0;">"{verse}"</p>
 </div>
 
 <hr />
@@ -45,24 +44,13 @@
 <div class="main">
     <div class="text">
         <div>
-            • <T id="about.more" />
-            <Link url="https://churchapps.org/">ChurchApps</Link>
+            • {credit} —
+            <Link url={upstreamUrl}>{upstreamName}</Link>
+            (GPL-3.0) by Kristoffer Vassbø and ChurchApps
         </div>
         <div>
-            • <T id="about.report" />
-            <Link url="https://github.com/ChurchApps/FreeShow/issues">GitHub Issues</Link>
-        </div>
-        <div>
-            • <T id="about.translate" />
-            <Link url="https://app.transifex.com/nettbiter/freeshow/">Transifex</Link>
-        </div>
-        <!-- <div>
-            • <T id="about.mail" />
-            <Link url="mailto:dev@freeshow.app">dev@freeshow.app</Link>
-        </div> -->
-        <div>
-            • <T id="about.support" />!
-            <Link url="https://churchapps.org/partner#give">churchapps.org/partner</Link>
+            • Source code for this version
+            <Link url={repositoryUrl}>GitHub</Link>
         </div>
     </div>
 
@@ -78,7 +66,7 @@
         </div>
     </div>
 
-    <div style="text-align: center;font-size: 0.7em;opacity: 0.5;margin-top: 12px;"><T id="about.made" /> Kristoffer Vassbø (2021)</div>
+    <div style="text-align: center;font-size: 0.7em;opacity: 0.5;margin-top: 12px;">{credit}. <T id="about.made" /> Kristoffer Vassbø / ChurchApps (2021). Modified by Every Joint Supplies contributors.</div>
 </div>
 
 <style>
