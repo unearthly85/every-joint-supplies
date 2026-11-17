@@ -86,7 +86,10 @@ jobs:
             github.event_name == 'schedule' ||
             github.event_name == 'workflow_dispatch' ||
             (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
-        runs-on: windows-latest
+        # windows-latest is Server 2025 with Visual Studio 18. Node 22's node-gyp
+        # does not recognize that install, so native modules (grandiose) fail.
+        # windows-2022 is the image upstream FreeShow uses for its Windows release.
+        runs-on: windows-2022
         env:
             ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
             ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder

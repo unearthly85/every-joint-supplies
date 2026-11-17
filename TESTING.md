@@ -26,6 +26,8 @@ npm and Electron downloads are cached from `package-lock.json` (`ELECTRON_CACHE`
 
 That smoke test does not click through a show. It checks that the package installs, the process starts, and uninstall removes it.
 
+The job runs on `windows-2022`, not `windows-latest`. The current `windows-latest` image is Windows Server 2025 with Visual Studio 18, and the node-gyp bundled with Node 22 does not detect that Visual Studio, so `grandiose` (NDI) fails to compile. `windows-2022` is also what upstream FreeShow uses for its Windows release.
+
 The installer job does not run on a normal pull request. It runs only when:
 
 - the workflow is a push to `main` (including a merge)
