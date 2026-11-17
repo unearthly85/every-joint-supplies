@@ -1,15 +1,32 @@
-name: Windows installer
+name: CI
+
+# Fast checks run on every pull request.
+# The Windows installer and its install/launch/uninstall smoke test run only for
+# a push to main, the nightly schedule, a manual dispatch, or a PR labeled full-ci.
+# See TESTING.md.
 
 on:
     pull_request:
+        types: [opened, synchronize, reopened, labeled]
     push:
         branches: [main]
+    schedule:
+        - cron: "0 7 * * *"
     workflow_dispatch:
+
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
 
 jobs:
     checks:
         name: Unit tests and lint
+        # Adding an unrelated label should not start a run. full-ci does, so the installer can follow.
+        if: github.event.action != 'labeled' || github.event.label.name == 'full-ci'
         runs-on: ubuntu-latest
+        env:
+            ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+            ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
         steps:
             - name: Check out Git repository
               uses: actions/checkout@v5
@@ -18,6 +35,17 @@ jobs:
               uses: actions/setup-node@v5
               with:
                   node-version: 22
+                  cache: npm
+
+            - name: Cache Electron
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .cache/electron
+                      .cache/electron-builder
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-electron-
 
             - name: Install libraries
               # osr-capture links -l:libEGL.so.1 and -l:libGLESv2.so.2. ubuntu-latest
@@ -34,7 +62,7 @@ jobs:
 
             # Upstream already has a lint backlog (no-console, no-shadow, unused locals).
             # Run the same checks their `npm run lint` uses, without --fix, and do not fail
-            # the installer on that backlog. New code under src/extensions/church is blocking.
+            # the job on that backlog. New code under src/extensions/church is blocking.
             - name: Lint electron
               run: npx eslint -c config/linting/eslint.electron.json --ext .js,.ts src/electron
               continue-on-error: true
@@ -51,9 +79,17 @@ jobs:
               run: npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/extensions/church --ignore-pattern '**/*.test.ts'
 
     installer:
-        name: Unsigned NSIS installer
+        name: Windows NSIS installer
         needs: checks
+        if: >-
+            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            github.event_name == 'schedule' ||
+            github.event_name == 'workflow_dispatch' ||
+            (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
         runs-on: windows-latest
+        env:
+            ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+            ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
         steps:
             - name: Check out Git repository
               uses: actions/checkout@v5
@@ -62,6 +98,17 @@ jobs:
               uses: actions/setup-node@v5
               with:
                   node-version: 22
+                  cache: npm
+
+            - name: Cache Electron
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .cache/electron
+                      .cache/electron-builder
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-electron-
 
             - name: Install Python
               uses: actions/setup-python@v5
@@ -93,6 +140,9 @@ jobs:
                   AZURE_CERTIFICATE_PROFILE: ${{ secrets.AZURE_CERTIFICATE_PROFILE }}
                   AZURE_CODE_SIGNING_ENDPOINT: ${{ secrets.AZURE_CODE_SIGNING_ENDPOINT }}
               run: npx electron-builder --config config/building/electron-builder.fork.cjs --win nsis --publish never
+
+            - name: Install, launch, and uninstall
+              run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ci/windows-installer-smoke.ps1
 
             - name: Upload installer
               uses: actions/upload-artifact@v4

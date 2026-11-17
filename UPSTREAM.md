@@ -60,8 +60,9 @@ These paths do not exist upstream. A merge should not touch them unless we are r
 
 - `src/extensions/church/` — product name, feature flags, and future church-specific behavior
 - `config/building/electron-builder.fork.cjs` — installer identity, our update feed, signing switch
-- `.github/workflows/windows-installer.yml` — unsigned Windows NSIS build for this fork
-- `UPSTREAM.md`, `SIGNING.md`
+- `.github/workflows/windows-installer.yml` — fast checks on every pull request; Windows NSIS build and smoke test only on main, nightly, manual dispatch, or the `full-ci` label. See [TESTING.md](TESTING.md).
+- `scripts/ci/windows-installer-smoke.ps1` — silent install, launch, uninstall
+- `UPSTREAM.md`, `SIGNING.md`, `TESTING.md`
 - `public/icon.png`, `public/icon.ico`, `src/server/icon.png` — placeholder icons
 
 `product.json` is the only place the product name, `appId`, installer file name, and GitHub owner/repo are written. Window titles marked `data-ejs-product` are filled from that file by `scripts/preBuild.js`.

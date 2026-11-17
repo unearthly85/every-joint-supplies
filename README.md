@@ -14,7 +14,7 @@
 
 ## Install on Windows
 
-Download the NSIS installer from the **Windows installer** workflow on this repository (the artifact is named `EveryJointSupplies-windows-nsis`). Double-click it. The app opens to the main window. The build is unsigned until code signing is turned on, so Windows SmartScreen may warn before the certificate exists. That is expected for now. See [SIGNING.md](SIGNING.md).
+Download the NSIS installer from a **CI** workflow run that built it (a merge to `main`, the nightly run, or a pull request labeled `full-ci`). The artifact is named `EveryJointSupplies-windows-nsis`. Double-click it. The app opens to the main window. The build is unsigned until code signing is turned on, so Windows SmartScreen may warn before the certificate exists. That is expected for now. See [SIGNING.md](SIGNING.md) and [TESTING.md](TESTING.md).
 
 A new install includes a welcome show. Open it and send it to a screen (or a window) from the output controls. No terminal and no account are required.
 
@@ -43,7 +43,7 @@ npm install
 npm start
 ```
 
-Our code belongs in [`src/extensions/church/`](src/extensions/church/README.md). Read [UPSTREAM.md](UPSTREAM.md) before editing anything outside that folder. Windows signing is described in [SIGNING.md](SIGNING.md) and is off until secrets exist.
+Our code belongs in [`src/extensions/church/`](src/extensions/church/README.md). Read [UPSTREAM.md](UPSTREAM.md) before editing anything outside that folder. Windows signing is described in [SIGNING.md](SIGNING.md) and is off until secrets exist. What CI runs on a pull request, and how to request a full installer build, is in [TESTING.md](TESTING.md).
 
 To produce an installer locally, the same way CI does:
 
