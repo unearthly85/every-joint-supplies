@@ -10,16 +10,23 @@ Write-Host "Installing $($installer.FullName)"
 $install = Start-Process -FilePath $installer.FullName -ArgumentList "/S" -Wait -PassThru
 if ($install.ExitCode -ne 0) { throw "Installer exited $($install.ExitCode)" }
 
-$installDir = Join-Path $env:LOCALAPPDATA "Programs\$($product.executableName)"
-$exe = Join-Path $installDir "$($product.executableName).exe"
-$deadline = (Get-Date).AddMinutes(3)
-while (-not (Test-Path -LiteralPath $exe) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 2 }
-if (-not (Test-Path -LiteralPath $exe)) {
+# One-click NSIS puts the app in %LOCALAPPDATA%\Programs\<npm package name>,
+# which is still "freeshow". The executable name is the product executableName.
+$programs = Join-Path $env:LOCALAPPDATA "Programs"
+$installed = $null
+$deadline = (Get-Date).AddSeconds(45)
+while (-not $installed -and (Get-Date) -lt $deadline) {
+    $installed = Get-ChildItem -Path $programs -Filter "$($product.executableName).exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $installed) { Start-Sleep -Seconds 2 }
+}
+if (-not $installed) {
     Write-Host "Programs directory:"
-    Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Programs") -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
-    throw "Installed exe not found at $exe"
+    Get-ChildItem -Path $programs -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+    throw "Installed exe $($product.executableName).exe was not found under $programs"
 }
 
+$exe = $installed.FullName
+$installDir = $installed.DirectoryName
 Write-Host "Launching $exe"
 Start-Process -FilePath $exe | Out-Null
 Start-Sleep -Seconds 15

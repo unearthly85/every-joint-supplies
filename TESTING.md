@@ -20,8 +20,8 @@ npm and Electron downloads are cached from `package-lock.json` (`ELECTRON_CACHE`
 
 **Windows NSIS installer** builds `dist/EveryJointSupplies-<version>-x64.exe`, uploads it as the artifact **EveryJointSupplies-windows-nsis**, then runs `scripts/ci/windows-installer-smoke.ps1`:
 
-1. Silent install (`/S`) into `%LOCALAPPDATA%\Programs\EveryJointSupplies`
-2. Launch `EveryJointSupplies.exe` and require the process to still be running after 15 seconds
+1. Silent install (`/S`). One-click NSIS uses `%LOCALAPPDATA%\Programs\<npm package name>`. That folder is still `freeshow` because `package.json` `name` is unchanged. The smoke test finds `EveryJointSupplies.exe` under that Programs directory.
+2. Launch that exe and require the process to still be running after 15 seconds
 3. Silent uninstall and require the exe to be gone
 
 That smoke test does not click through a show. It checks that the package installs, the process starts, and uninstall removes it.
