@@ -57,26 +57,17 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Unit tests
-              run: npm run test:unit
+            # Every pull request and every push to main. A failing test or lint error fails the job.
+            - name: Unit tests and extension coverage
+              run: npx vitest run --config config/testing/vitest.config.ts --coverage
 
-            # Upstream already has a lint backlog (no-console, no-shadow, unused locals).
-            # Run the same checks their `npm run lint` uses, without --fix, and do not fail
-            # the job on that backlog. New code under src/extensions/church is blocking.
-            - name: Lint electron
-              run: npx eslint -c config/linting/eslint.electron.json --ext .js,.ts src/electron
-              continue-on-error: true
-
-            - name: Lint frontend
-              run: npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/frontend
-              continue-on-error: true
-
-            - name: Lint svelte
-              run: npx eslint -c config/linting/eslint.svelte.js --ext .svelte src/frontend
-              continue-on-error: true
-
-            - name: Lint our extension
-              run: npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/extensions/church --ignore-pattern '**/*.test.ts'
+            # These fail the job. A full eslint of upstream src/electron and src/frontend
+            # already fails on hundreds of pre-existing issues; that backlog is not a gate.
+            # See TESTING.md.
+            - name: Lint our extension and fork hooks
+              run: |
+                  npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/extensions/church --ignore-pattern '**/*.test.ts'
+                  npx eslint -c config/linting/eslint.electron.json --ext .js,.ts src/electron/utils/productConfig.ts src/electron/utils/applyProductName.ts
 
     installer:
         name: Windows NSIS installer

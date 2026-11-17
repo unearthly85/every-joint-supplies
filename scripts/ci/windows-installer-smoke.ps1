@@ -27,14 +27,33 @@ if (-not $installed) {
 
 $exe = $installed.FullName
 $installDir = $installed.DirectoryName
-Write-Host "Launching $exe"
-Start-Process -FilePath $exe | Out-Null
-Start-Sleep -Seconds 15
-$running = @(Get-Process -Name $product.executableName -ErrorAction SilentlyContinue)
-if ($running.Count -eq 0) { throw "$($product.executableName) was not running 15 seconds after launch" }
-Write-Host "App is running. Pids: $($running.Id -join ', ')"
+$versionProduct = (Get-Item -LiteralPath $exe).VersionInfo.ProductName
+Write-Host "Exe ProductName: $versionProduct"
+if ($versionProduct -ne $product.productName) {
+    throw "Installed exe ProductName is '$versionProduct', expected '$($product.productName)'"
+}
 
-$running | Stop-Process -Force
+Write-Host "Launching $exe"
+$launched = Start-Process -FilePath $exe -PassThru
+$deadline = (Get-Date).AddSeconds(30)
+$title = ""
+$running = @()
+while ((Get-Date) -lt $deadline) {
+    $running = @(Get-Process -Name $product.executableName -ErrorAction SilentlyContinue)
+    if ($running.Count -eq 0 -and $launched.HasExited) {
+        throw "App exited before a window appeared. Exit code $($launched.ExitCode)"
+    }
+    $title = @($running | ForEach-Object { $_.MainWindowTitle } | Where-Object { $_ }) | Select-Object -First 1
+    if ($title -eq $product.productName) { break }
+    Start-Sleep -Seconds 1
+}
+if ($running.Count -eq 0) { throw "$($product.executableName) was not running within 30 seconds" }
+if ($title -ne $product.productName) {
+    $seen = @($running | ForEach-Object { $_.MainWindowTitle }) -join " | "
+    throw "Main window title was '$seen', expected '$($product.productName)'"
+}
+Write-Host "App is running as '$title'. Pids: $($running.Id -join ', ')"
+
 Get-Process -Name $product.executableName -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 2
 
