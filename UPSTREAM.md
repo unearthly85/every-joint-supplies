@@ -120,6 +120,14 @@ These still talk to upstream services. They do not upload a church's shows.
 - File-format labels such as "FreeShow Song" stay, because that is the upstream file format.
 - `public/icon.icns` is still the upstream Mac icon. Mac builds are not part of this task. Windows uses `public/icon.png` and `public/icon.ico`.
 
+## TODO for later tasks
+
+Not part of the Windows rebrand. Do not treat these as done.
+
+- [ ] Replace `public/icon.icns` with our icon when Mac builds are scheduled. `public/icon.png` and `public/icon.ico` are already the placeholder.
+- [ ] Decide what to do with help links that still open `https://freeshow.app` (docs, quick search, scripture help, companion, and the YouTube embed referrer in `src/electron/index.ts`). They document the shared presenter. A later task should either keep them as upstream docs or point operators at our own help.
+- [ ] Decide what to do with ChurchApps Bible API usage (`https://api.churchapps.org/content/bibles` in `src/frontend/components/drawer/bible/scripture.ts`). It fetches Bible text. It is not cloud sync of shows. A later task should confirm we still want that source, or replace it.
+
 ## Merge log
 
 | Date | Upstream SHA | Notes |
