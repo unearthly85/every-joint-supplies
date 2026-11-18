@@ -1,0 +1,152 @@
+name: CI
+
+permissions:
+    contents: read
+
+# Fast checks run on every pull request.
+# The Windows installer and its install/launch/uninstall smoke test run only for
+# a push to main, the nightly schedule, a manual dispatch, or a PR labeled full-ci.
+# See TESTING.md.
+
+on:
+    pull_request:
+        types: [opened, synchronize, reopened, labeled]
+    push:
+        branches: [main]
+    schedule:
+        - cron: "0 7 * * *"
+    workflow_dispatch:
+
+# A non-full-ci label starts a run that skips every job. Give that run its own
+# group so it does not cancel the checks that are already in progress.
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' && github.event.label.name != 'full-ci') && format('-noop-{0}', github.run_id) || '' }}
+    cancel-in-progress: true
+
+jobs:
+    checks:
+        name: Unit tests and lint
+        # Adding an unrelated label should not start a run. full-ci does, so the installer can follow.
+        if: github.event.action != 'labeled' || github.event.label.name == 'full-ci'
+        runs-on: ubuntu-latest
+        env:
+            ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+            ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+        steps:
+            - name: Check out Git repository
+              uses: actions/checkout@v5
+
+            - name: Install Node.js and NPM
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Cache Electron
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .cache/electron
+                      .cache/electron-builder
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-electron-
+
+            - name: Install libraries
+              # osr-capture links -l:libEGL.so.1 and -l:libGLESv2.so.2. ubuntu-latest
+              # (26.04) does not ship those sonames. libegl1 and libgles2 do.
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libfontconfig1-dev uuid-dev libltc-dev libegl1 libgles2 --fix-missing
+
+            - name: Install dependencies
+              run: npm ci
+
+            # Every pull request and every push to main. A failing test or lint error fails the job.
+            - name: Unit tests and extension coverage
+              run: npx vitest run --config config/testing/vitest.config.ts --coverage
+
+            # These fail the job. A full eslint of upstream src/electron and src/frontend
+            # already fails on hundreds of pre-existing issues; that backlog is not a gate.
+            # See TESTING.md.
+            - name: Lint our extension and fork hooks
+              run: |
+                  npx eslint -c config/linting/eslint.frontend.json --ext .js,.ts src/extensions/church --ignore-pattern '**/*.test.ts'
+                  npx eslint -c config/linting/eslint.electron.json --ext .js,.ts src/electron/utils/productConfig.ts src/electron/utils/applyProductName.ts
+
+    installer:
+        name: Windows NSIS installer
+        needs: checks
+        if: >-
+            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+            github.event_name == 'schedule' ||
+            github.event_name == 'workflow_dispatch' ||
+            (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'full-ci'))
+        # windows-latest is Server 2025 with Visual Studio 18. Node 22's node-gyp
+        # does not recognize that install, so native modules (grandiose) fail.
+        # windows-2022 is the image upstream FreeShow uses for its Windows release.
+        runs-on: windows-2022
+        env:
+            ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+            ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+        steps:
+            - name: Check out Git repository
+              uses: actions/checkout@v5
+
+            - name: Install Node.js and NPM
+              uses: actions/setup-node@v5
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Cache Electron
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      .cache/electron
+                      .cache/electron-builder
+                  key: ${{ runner.os }}-electron-${{ hashFiles('package-lock.json') }}
+                  restore-keys: |
+                      ${{ runner.os }}-electron-
+
+            - name: Install Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.12"
+
+            - name: Install setuptools
+              run: pip install setuptools
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build
+              run: npm run build
+
+            # --publish never is required. electron-builder will upload a GitHub Release
+            # when it sees GITHUB_TOKEN on a runner unless publish is forced off.
+            # Signing turns on inside electron-builder.fork.cjs only when the secrets are non-empty.
+            - name: Package NSIS installer
+              env:
+                  WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+                  WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+                  CSC_LINK: ${{ secrets.CSC_LINK }}
+                  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+                  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+                  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+                  AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+                  AZURE_CODE_SIGNING_ACCOUNT: ${{ secrets.AZURE_CODE_SIGNING_ACCOUNT }}
+                  AZURE_CERTIFICATE_PROFILE: ${{ secrets.AZURE_CERTIFICATE_PROFILE }}
+                  AZURE_CODE_SIGNING_ENDPOINT: ${{ secrets.AZURE_CODE_SIGNING_ENDPOINT }}
+              run: npx electron-builder --config config/building/electron-builder.fork.cjs --win nsis --publish never
+
+            - name: Install, launch, and uninstall
+              run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/ci/windows-installer-smoke.ps1
+
+            - name: Upload installer
+              uses: actions/upload-artifact@v4
+              with:
+                  name: EveryJointSupplies-windows-nsis
+                  path: dist/*.exe
+                  if-no-files-found: error
+                  retention-days: 14

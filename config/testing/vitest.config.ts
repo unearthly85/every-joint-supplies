@@ -8,6 +8,20 @@ export default defineConfig({
     root: fileURLToPath(new URL("../../", import.meta.url)),
     test: {
         include: ["src/**/*.test.ts"],
-        environment: "node"
+        environment: "node",
+        // Collected only when vitest is run with --coverage. Thresholds apply to our
+        // extension, not to upstream FreeShow tests.
+        coverage: {
+            provider: "v8",
+            reporter: ["text", "text-summary"],
+            include: ["src/extensions/church/**/*.ts"],
+            exclude: ["**/*.test.ts"],
+            thresholds: {
+                lines: 90,
+                functions: 90,
+                statements: 90,
+                branches: 80
+            }
+        }
     }
 })

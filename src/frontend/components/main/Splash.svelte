@@ -8,6 +8,7 @@
     import MaterialButton from "../inputs/MaterialButton.svelte"
     import Center from "../system/Center.svelte"
     import { getVOTD } from "./votd"
+    import { productName } from "../../../extensions/church/features"
 
     function createProject() {
         // if opened project is empty go to project list (to reduce confusion)
@@ -47,7 +48,7 @@
 </script>
 
 <Center class="context #splash">
-    <h1>FreeShow</h1>
+    <h1>{productName}</h1>
     <p style="opacity: 0.7;">v{$version}</p>
     {#if $special.splashText}
         <p style="padding-top: 30px">

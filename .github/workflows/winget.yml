@@ -1,15 +1,13 @@
 name: Publish to WinGet
+
+# Disabled. Upstream publishes the ChurchApps.FreeShow package on release.
+# Re-enable only with our own winget identifier, never ChurchApps.FreeShow.
 on:
-    release:
-        types: [released]
+    workflow_dispatch:
 
 jobs:
     publish:
         runs-on: ubuntu-latest
         steps:
-            - name: WinGet Releaser
-              uses: vedantmgoyal9/winget-releaser@v2
-              with:
-                  identifier: ChurchApps.FreeShow
-                  token: ${{ secrets.WINGET_TOKEN }}
-                  fork-user: vassbo
+            - name: Winget publish is disabled
+              run: echo "Winget publish is disabled so this fork does not update ChurchApps.FreeShow."

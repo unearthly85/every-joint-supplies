@@ -1,4 +1,5 @@
 import { getContentProviderAccess } from "../data/contentProviders"
+import { churchAppsCloudAllowed } from "../utils/productConfig"
 import { AmazingLifeProvider } from "./amazingLife/AmazingLifeProvider"
 import { CanvaProvider } from "./canva/CanvaProvider"
 import type { ContentProvider } from "./base/ContentProvider"
@@ -73,6 +74,11 @@ export class ContentProviderRegistry {
     static async connect(providerId: ContentProviderId, scope: string): Promise<boolean> {
         this.ensureInitialized()
 
+        if (providerId === "churchApps" && !churchAppsCloudAllowed()) {
+            console.info("ChurchApps cloud sync is disabled in this build.")
+            return false
+        }
+
         const provider = this.getProvider(providerId)
         if (!provider) {
             console.error(`Content provider '${providerId}' not found`)
@@ -113,6 +119,11 @@ export class ContentProviderRegistry {
     static async loadServices(providerId: ContentProviderId, cloudOnly: boolean, data: any): Promise<void> {
         this.ensureInitialized()
 
+        if (providerId === "churchApps" && !churchAppsCloudAllowed()) {
+            console.info("ChurchApps cloud sync is disabled in this build.")
+            return
+        }
+
         const provider = this.getProvider(providerId)
         if (!provider) {
             console.error(`Content provider '${providerId}' not found`)
@@ -137,6 +148,8 @@ export class ContentProviderRegistry {
      */
     static async startupLoad(providerId: ContentProviderId, scope: string, data?: any, cloudOnly?: boolean): Promise<void> {
         this.ensureInitialized()
+
+        if (providerId === "churchApps" && !churchAppsCloudAllowed()) return
 
         const provider = this.getProvider(providerId)
         if (!provider) {

@@ -6,6 +6,7 @@ import { DEFAULT_ITEM_STYLE } from "../components/edit/scripts/itemHelpers"
 import { setShow } from "../components/helpers/setShow"
 import { activePopup, audioFolders, deletedDefaults, effects, folders, language, mediaFolders, outputs, overlays, projects, scriptures, serverData, shows, templates, variables } from "../stores"
 import { stageShows, templateCategories } from "./../stores"
+import { productName } from "../../extensions/church/features"
 import { translateText } from "./language"
 import { save } from "./save"
 
@@ -418,7 +419,7 @@ function getDefaultOverlays() {
             {
                 style: "top:870px;left:1248px;height:170px;width:630px;",
                 align: "align-items:flex-end;",
-                lines: [{ align: "text-align: right;", text: [{ value: "FreeShow", style: "font-size:50px;font-weight:bold;color:#F0008C;" }] }]
+                lines: [{ align: "text-align: right;", text: [{ value: productName, style: "font-size:50px;font-weight:bold;color:#F0008C;" }] }]
             }
         ]
     }

@@ -10,6 +10,7 @@
     import MaterialToggleSwitch from "../../inputs/MaterialToggleSwitch.svelte"
     import InputRow from "../../input/InputRow.svelte"
     import { registerPopupSubmit } from "../../../utils/popup"
+    import { releasesPage } from "../../../../extensions/church/features"
 
     registerPopupSubmit(downloadLatest)
 
@@ -54,8 +55,7 @@
     function downloadLatest() {
         if (!hasUpdate || !latestVersion) return
 
-        const isBeta = latestVersion.includes("-beta")
-        sendMain(Main.URL, isBeta ? "https://github.com/ChurchApps/FreeShow/releases" : "https://freeshow.app/?download")
+        sendMain(Main.URL, releasesPage)
     }
 
     onMount(checkUpdates)

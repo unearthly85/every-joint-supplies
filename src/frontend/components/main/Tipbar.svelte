@@ -6,6 +6,7 @@
     import MaterialButton from "../inputs/MaterialButton.svelte"
     import { Main } from "../../../types/IPC/Main"
     import { sendMain } from "../../IPC/main"
+    import { upstreamDonatePrompt } from "../../../extensions/church/features"
 
     const ONE_DAY = 1000 * 60 * 60 * 24
 
@@ -25,7 +26,7 @@
     // don't show again until after 7 days if closed, or 14 days if interacted
     let recentlyInteracted = lastInteracted ? now - lastInteracted < ONE_DAY * 14 : now - lastClosed < ONE_DAY * 7
     // show if: not recently interacted & 30% chance & month is december & year is 2026 (for now)
-    let isClosed = recentlyInteracted || Math.random() > 0.3 || new Date().getMonth() !== 11 || new Date().getFullYear() !== 2026
+    let isClosed = !upstreamDonatePrompt || recentlyInteracted || Math.random() > 0.3 || new Date().getMonth() !== 11 || new Date().getFullYear() !== 2026
 
     function close() {
         isClosed = true

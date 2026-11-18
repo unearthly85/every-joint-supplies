@@ -8,6 +8,7 @@ import { getTimeFromInterval } from "../components/helpers/time"
 import { requestMain, requestMainMultiple, sendMain, sendMainMultiple } from "../IPC/main"
 import { cameraManager } from "../media/cameraManager"
 import { activePopup, activeProfile, alertMessage, cachePath, cloudSyncData, contentProviderData, currentWindow, dataPath, deviceId, driveKeys, isDev, isOptimizedMode, loaded, loadedState, os, outputs, profiles, providerConnections, shows, special, version, windowState } from "../stores"
+import { churchAppsCloudSync } from "../../extensions/church/features"
 import { startTracking } from "./analytics"
 import { setupCloudSync } from "./cloudSync"
 import { wait, waitUntilValueIsDefined } from "./common"
@@ -165,7 +166,7 @@ export async function contentProviderSync(startup = false, remainingOnly = false
 
     const providers = [
         { providerId: "planningcenter" as ContentProviderId, scope: "services", data: { syncFolderIds: get(contentProviderData).planningcenter?.syncFolderIds || [] }, autoSync: get(contentProviderData).planningcenter?.autoSync !== false },
-        { providerId: "churchApps" as ContentProviderId, scope: "plans", data: { shows: get(shows), categories: get(contentProviderData).churchApps?.syncCategories || [] } },
+        ...(churchAppsCloudSync ? [{ providerId: "churchApps" as ContentProviderId, scope: "plans", data: { shows: get(shows), categories: get(contentProviderData).churchApps?.syncCategories || [] } }] : []),
         { providerId: "amazinglife" as ContentProviderId, scope: "openid profile email" },
         { providerId: "onstage" as ContentProviderId, scope: "presenter", data: get(contentProviderData).onstage || {}, autoSync: get(contentProviderData).onstage?.autoSync !== false }
     ]
@@ -184,6 +185,7 @@ export async function contentProviderSync(startup = false, remainingOnly = false
     })
 
     setTimeout(() => {
+        if (!churchAppsCloudSync) return
         if (get(cloudSyncData).id) return
 
         const hasDriveSync = typeof get(driveKeys) === "object" && Object.keys(get(driveKeys)).length

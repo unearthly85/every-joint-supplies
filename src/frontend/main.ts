@@ -4,8 +4,11 @@
 import * as Sentry from "@sentry/electron/renderer"
 import "svelte"
 import { set_raf } from "svelte/internal"
+import { productName } from "../extensions/church/features"
 import App from "./App.svelte"
 import { ERROR_FILTER } from "./utils/common"
+
+document.title = productName
 
 // error reporting (production only)
 // if autoErrorReporting is false, electron reporting will not start and this will fail with an error which is expected

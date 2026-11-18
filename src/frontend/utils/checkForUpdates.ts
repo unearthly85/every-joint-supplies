@@ -1,4 +1,5 @@
 import { get } from "svelte/store"
+import { releasesApi } from "../../extensions/church/features"
 import { activePopup, alertUpdates, isDev, popupData, special } from "./../stores"
 
 interface UpdateData {
@@ -8,7 +9,7 @@ interface UpdateData {
 }
 
 export async function getUpdateData(currentVersion: string, includeBeta: boolean): Promise<UpdateData> {
-    const response = await fetch("https://api.github.com/repos/ChurchApps/freeshow/releases")
+    const response = await fetch(releasesApi)
     const data = await response.json()
 
     const latestAll = data.filter((a: any) => a.draft === false)[0]

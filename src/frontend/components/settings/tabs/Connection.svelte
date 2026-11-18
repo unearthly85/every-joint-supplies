@@ -18,6 +18,7 @@
     import MaterialNumberInput from "../../inputs/MaterialNumberInput.svelte"
     import MaterialTextInput from "../../inputs/MaterialTextInput.svelte"
     import MaterialToggleSwitch from "../../inputs/MaterialToggleSwitch.svelte"
+    import { churchAppsCloudSync } from "../../../../extensions/church/features"
     import Tip from "../../main/Tip.svelte"
 
     let ip = "localhost"
@@ -290,11 +291,13 @@
         </MaterialButton>
     </InputRow>
 
-    <InputRow>
-        <MaterialButton on:click={() => contentProviderConnect("churchApps")} style="flex: 1;" icon="login">
-            <T id="settings.connect_to" replace={["ChurchApps"]} />
-        </MaterialButton>
-    </InputRow>
+    {#if churchAppsCloudSync}
+        <InputRow>
+            <MaterialButton on:click={() => contentProviderConnect("churchApps")} style="flex: 1;" icon="login">
+                <T id="settings.connect_to" replace={["ChurchApps"]} />
+            </MaterialButton>
+        </InputRow>
+    {/if}
 
     <InputRow>
         <MaterialButton on:click={() => contentProviderConnect("amazinglife")} style="flex: 1;" icon="login">
@@ -338,7 +341,7 @@
     {#if Object.keys($projectTemplates).length}
         <MaterialDropdown label="actions.project_template" options={projectTemplateOptions} value={$contentProviderData.planningcenter?.projectTemplate || ""} on:change={(e) => updateProvider("planningcenter", "projectTemplate", e.detail)} />
     {/if}
-{:else if $providerConnections.churchApps && !cloudOnly.churchApps}
+{:else if churchAppsCloudSync && $providerConnections.churchApps && !cloudOnly.churchApps}
     <!-- ChurchApps connected -->
     <Title label="Content Provider: ChurchApps" icon="list" />
 
