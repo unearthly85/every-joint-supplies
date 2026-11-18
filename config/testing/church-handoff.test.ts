@@ -1,12 +1,10 @@
 import { expect, test, type Page } from "@playwright/test"
-import { mkdtempSync } from "node:fs"
-import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { spawnSync } from "node:child_process"
 import { launchChurchApp } from "./electronHarness"
 
+const clip = join(process.cwd(), "config/testing/fixtures/countdown-short.mp4")
+
 test("the live output follows the countdown, a go-back, an early click, and mode B", async () => {
-    const clip = writeClip()
     const launched = await launchChurchApp()
     const window = launched.window
     try {
@@ -63,14 +61,6 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await launched.close()
     }
 })
-
-function writeClip(): string {
-    const dir = mkdtempSync(join(tmpdir(), "ejs-clip-"))
-    const file = join(dir, "countdown-short.mp4")
-    const result = spawnSync("ffmpeg", ["-y", "-f", "lavfi", "-i", "color=c=blue:s=320x180:d=1", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-shortest", "-t", "1", "-c:v", "libx264", "-pix_fmt", "yuv420p", file], { encoding: "utf8" })
-    if (result.status !== 0) throw new Error(result.stderr || "ffmpeg could not write the countdown clip")
-    return file
-}
 
 async function outputText(window: Page): Promise<string> {
     return window.locator("#previewArea").innerText()
