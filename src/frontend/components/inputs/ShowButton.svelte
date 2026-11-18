@@ -16,6 +16,7 @@
     import { joinTime, secondsToTime } from "../helpers/time"
     import { clearSlide } from "../output/clear"
     import { getTextSnippet, highlightText } from "../quicksearch/searchHighlight"
+    import { projectItemLabel } from "../../../extensions/church/service/model"
     import HiddenInput from "./HiddenInput.svelte"
     import MaterialButton from "./MaterialButton.svelte"
 
@@ -26,7 +27,9 @@
     export let isFirst: boolean = false
     export let isProject: boolean = false
     $: type = show.type || "show"
-    $: name = type === "show" ? $shows[show.id]?.name : type === "overlay" ? $overlays[show.id]?.name : type === "effect" ? $effects[show.id]?.name : type === "player" ? ($playerVideos[id] || show.data?.id ? $playerVideos[id]?.name || show.data?.name || show.data?.id : setNotFound(id)) : show.name
+    $: storedName = type === "show" ? $shows[show.id]?.name : type === "overlay" ? $overlays[show.id]?.name : type === "effect" ? $effects[show.id]?.name : type === "player" ? ($playerVideos[id] || show.data?.id ? $playerVideos[id]?.name || show.data?.name || show.data?.id : setNotFound(id)) : show.name
+    // Only a Sunday item uses the short ref label. Other projects keep the stored show name.
+    $: name = projectItemLabel(isProject, show.name, storedName, show.data?.church)
     // export let page: "side" | "drawer" = "drawer"
     export let match: null | number = null
     export let searchValue = ""

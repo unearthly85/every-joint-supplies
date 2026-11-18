@@ -1,33 +1,104 @@
-import { test } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
+import { readdirSync } from "node:fs"
+import { join } from "node:path"
+import { launchChurchApp } from "./electronHarness"
 
-/**
- * Scaffold for a Sunday-flow Electron test. Not executed.
- *
- * The intended test is: launch the app, open the built-in Welcome show, and
- * present it to a windowed output. That path is not wired into CI in this
- * change. Reasons:
- *
- * - It needs a production Electron build (`npm run build`) plus a display.
- *   On Linux that means xvfb. That is several minutes, so it does not belong
- *   on the fast pull-request job.
- * - windows-latest cannot compile the native addons (Visual Studio 18), so
- *   it cannot build the app the test would launch.
- * - FreeShow's Go Live control stays disabled until an output exists
- *   (`Top.svelte`). Turning on a windowed output goes through the output
- *   settings, which upstream's own `config/testing/start.test.ts` does not
- *   cover. The Welcome show is also behind the first-run wizard.
- *
- * `config/testing/start.test.ts` is the existing launch harness. Extend this
- * test from that harness once the output selectors are stable, then run it
- * with the full-ci job under xvfb.
- */
-test.fixme("app launches, opens the sample show, and presents to a windowed output", async () => {
-    // 1. Launch Electron the way config/testing/start.test.ts does
-    //    (_electron.launch, --no-sandbox, a temporary FS_MOCK_STORE_PATH).
-    // 2. Wait for the index.html window and expect its title to be
-    //    "Every Joint Supplies".
-    // 3. Finish or skip the first-run wizard, then open the Welcome show
-    //    created by createDefaultShow.
-    // 4. Enable a windowed output and send that show to it. Fail if the
-    //    output window never appears.
+const FIRST_SHOWS = [
+    "Sunday 2026-11-22 – Announcements.show",
+    "Sunday 2026-11-22 – Scripture.show",
+    "Sunday 2026-11-22 – Song.show",
+    "Sunday 2026-11-22 – Welcome slides.show"
+]
+
+test("two Sundays keep their own songs, and the preview is visible after start", async ({}, testInfo) => {
+    const first = await launchChurchApp()
+    const dirs = first.dirs
+    try {
+        const window = first.window
+        await window.getByTestId("open-new-sunday").waitFor({ timeout: 60_000 })
+        await expect(window).toHaveTitle("Every Joint Supplies")
+        await expect(window.getByTestId("new-sunday")).toHaveCount(0)
+        await expect(window.locator("#previewArea")).toBeVisible()
+        await expectNoOverlap(window, "Projects")
+        await window.locator(".tabs .header").screenshot({ path: testInfo.outputPath("projects-header.png") })
+
+        await window.getByTestId("open-new-sunday").click()
+        const panel = window.getByTestId("new-sunday")
+        await expect(panel).toBeVisible()
+        await expect(window.getByTestId("advertised-time")).toHaveValue("10:30 AM")
+        await expect(window.getByTestId("start-time")).toHaveValue("10:27 AM")
+        await expect(window.getByTestId("countdown-minutes")).toHaveValue("5")
+        await expect(window.getByTestId("countdown-seconds")).toHaveValue("0")
+        await expect(window.getByTestId("countdown-line")).toHaveText("Countdown starts 10:27 AM, ends 10:32 AM")
+
+        await window.getByTestId("service-date").fill("2026-11-22")
+        await window.getByTestId("start-sunday").click()
+        await expect(panel).toBeHidden()
+        await expect(window.locator("#previewArea")).toBeVisible()
+        await expect(window.getByText("Sunday 2026-11-22", { exact: true })).toBeVisible()
+        await expect(window.getByText("Pre-service", { exact: true })).toBeVisible()
+        await expect(window.getByText("Countdown", { exact: true })).toBeVisible()
+        await expect(window.getByText("Service", { exact: true })).toBeVisible()
+        await expect(window.getByRole("button", { name: "Song", exact: true })).toBeVisible()
+        await expectNoOverlap(window, "Sunday 2026-11-22")
+        await window.locator(".tabs .header").screenshot({ path: testInfo.outputPath("project-header.png") })
+
+        await window.getByText("Countdown", { exact: true }).click()
+        await expect(window.locator("#showArea input[type='time']")).toHaveValue("10:27")
+
+        const showsDir = join(dirs.data, "Shows")
+        await expect.poll(() => safeList(showsDir).sort(), { timeout: 20_000 }).toEqual(FIRST_SHOWS)
+
+        await window.getByTestId("open-new-sunday").click()
+        await window.getByTestId("service-date").fill("2026-11-22")
+        await window.getByTestId("start-sunday").click()
+        await expect(window.getByTestId("new-sunday")).toBeHidden()
+        await expect(window.getByText("Sunday 2026-11-22", { exact: true })).toBeVisible()
+        expect(safeList(showsDir).sort()).toEqual(FIRST_SHOWS)
+
+        await window.getByTestId("open-new-sunday").click()
+        await window.getByTestId("service-date").fill("2026-11-29")
+        await window.getByTestId("start-sunday").click()
+        await expect(window.getByTestId("new-sunday")).toBeHidden()
+        await expect(window.getByRole("button", { name: "Song", exact: true })).toBeVisible()
+        await expect
+            .poll(() => safeList(showsDir), { timeout: 20_000 })
+            .toEqual(expect.arrayContaining([...FIRST_SHOWS, "Sunday 2026-11-29 – Song.show"]))
+    } finally {
+        await first.close({ keep: true })
+    }
+
+    const second = await launchChurchApp(dirs)
+    try {
+        const window = second.window
+        await window.getByText("Sunday 2026-11-29", { exact: true }).waitFor({ timeout: 60_000 })
+        await expect(window.getByRole("button", { name: "Song", exact: true })).toBeVisible()
+        await window.locator("[data-title='Projects']").click()
+        await window.getByRole("button", { name: "Sunday 2026-11-22", exact: true }).click()
+        await expect(window.getByRole("button", { name: "Song", exact: true })).toBeVisible()
+        await expect(window.getByText("Pre-service", { exact: true })).toBeVisible()
+        await window.locator("[data-title='Projects']").click()
+        await window.getByRole("button", { name: "Sunday 2026-11-29", exact: true }).click()
+        await expect(window.getByText("Sunday 2026-11-29", { exact: true })).toBeVisible()
+        await expect(window.getByRole("button", { name: "Song", exact: true })).toBeVisible()
+    } finally {
+        await second.close()
+    }
 })
+
+async function expectNoOverlap(window: Page, title: string) {
+    const titleBox = await window.locator(".tabs .header p", { hasText: title }).boundingBox()
+    const buttonBox = await window.getByTestId("open-new-sunday").boundingBox()
+    expect(titleBox).toBeTruthy()
+    expect(buttonBox).toBeTruthy()
+    const overlaps = titleBox!.x < buttonBox!.x + buttonBox!.width && titleBox!.x + titleBox!.width > buttonBox!.x && titleBox!.y < buttonBox!.y + buttonBox!.height && titleBox!.y + titleBox!.height > buttonBox!.y
+    expect(overlaps).toBe(false)
+}
+
+function safeList(dir: string): string[] {
+    try {
+        return readdirSync(dir)
+    } catch {
+        return []
+    }
+}

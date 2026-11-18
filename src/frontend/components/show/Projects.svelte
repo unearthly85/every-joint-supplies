@@ -26,6 +26,7 @@
     import { getRecentlyUsedProjects, isProjectLinked, openProject } from "./project"
     import ProjectContentList from "./ProjectContentList.svelte"
     import ProjectList from "./ProjectList.svelte"
+    import { sundayPanelOpen } from "../../../extensions/church/SundayPanel.svelte"
 
     let tree: Tree[] = []
 
@@ -392,6 +393,7 @@
                         </p>
 
                         <div class="right context">
+                            <MaterialButton data-testid="open-new-sunday" icon="calendar" iconSize={1.1} title="New Sunday" style="width: 32px;height: 100%;padding: 0.3em 0.5em;" on:click={() => sundayPanelOpen.set(true)} white />
                             <MaterialButton style="width: 32px;height: 100%;padding: 0.3em 0.5em;border-bottom-right-radius: 10px;{showProjectDropdown ? '' : 'opacity: 0.8;'}" title="create_show.more_options" icon="more" on:click={() => (showProjectDropdown = !showProjectDropdown)} white={!showProjectDropdown}>
                                 <!-- prevent force "white" -->
                                 <span style="display: none;"></span>
@@ -488,6 +490,7 @@
 
                 {#if !showProjectsOptions}
                     <div class="right">
+                        <MaterialButton data-testid="open-new-sunday" icon="calendar" iconSize={1.1} title="New Sunday" style="width: 32px;height: 100%;padding: 0.3em 0.5em;" on:click={() => sundayPanelOpen.set(true)} white />
                         <MaterialButton style="width: 32px;height: 100%;padding: 0.3em 0.5em;border-bottom-right-radius: 10px;{showProjectDropdown ? '' : 'opacity: 0.8;'}" title="create_show.more_options" icon="more" on:click={() => (showProjectDropdown = !showProjectDropdown)} white={!showProjectDropdown}>
                             <span style="display: none;"></span>
                         </MaterialButton>
@@ -547,6 +550,8 @@
                     <MaterialButton variant="outlined" icon="project" title="<b>new.project</b><br>tooltip.project" on:click={() => createProject()}>
                         <T id="formats.project" />
                     </MaterialButton>
+
+                    <MaterialButton variant="outlined" icon="calendar" title="New Sunday" on:click={() => { addMenuOpen = false; sundayPanelOpen.set(true) }}>New Sunday</MaterialButton>
 
                     <MaterialButton variant="outlined" icon="folder" title="new.folder" on:click={() => createProject(true)} white>
                         <T id="media.folder_type" />
@@ -634,7 +639,7 @@
         /* padding: 5px 0; */
 
         display: flex;
-        justify-content: center;
+        justify-content: space-between;
         align-items: center;
 
         backdrop-filter: blur(10px);
@@ -664,15 +669,21 @@
 
     .header .left,
     .header .right {
-        position: absolute;
-        top: 0;
+        position: static;
+        flex: none;
         height: 100%;
+        display: flex;
+        align-items: center;
     }
-    .header .left {
-        left: 0;
-    }
-    .header .right {
-        right: 0;
+
+    .tabs .header > p {
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     /* #projectsArea :global(.scroll) {
