@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+    contents: read
+
 # Fast checks run on every pull request.
 # The Windows installer and its install/launch/uninstall smoke test run only for
 # a push to main, the nightly schedule, a manual dispatch, or a PR labeled full-ci.
@@ -14,8 +17,10 @@ on:
         - cron: "0 7 * * *"
     workflow_dispatch:
 
+# A non-full-ci label starts a run that skips every job. Give that run its own
+# group so it does not cancel the checks that are already in progress.
 concurrency:
-    group: ci-${{ github.workflow }}-${{ github.ref }}
+    group: ci-${{ github.workflow }}-${{ github.ref }}${{ (github.event.action == 'labeled' && github.event.label.name != 'full-ci') && format('-noop-{0}', github.run_id) || '' }}
     cancel-in-progress: true
 
 jobs:

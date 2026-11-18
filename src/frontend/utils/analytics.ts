@@ -6,7 +6,8 @@ const MEASUREMENT_ID = "G-CEE6P1QXG6"
 const API_SECRET = atob("YlVwZE42bXpRVjYyWDc2d0Z3OGMwZw==")
 const SESSION_ID = Date.now().toString()
 
-function trackEvent(eventName: string, params?: Record<string, any>) {
+export function trackEvent(eventName: string, params?: Record<string, any>) {
+    if (!upstreamAnalytics) return
     if (get(isDev)) return
 
     const clientId = get(deviceId)

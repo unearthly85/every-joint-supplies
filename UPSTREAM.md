@@ -73,7 +73,7 @@ These paths do not exist upstream. A merge should not touch them unless we are r
 - **Their Authenticode certificate.** `electron-builder.yaml` still contains Live Church Solutions Azure signing options. Our builds do not use that file directly. The fork config strips `azureSignOptions` unless our own signing secrets are set. See [SIGNING.md](SIGNING.md).
 - **Their WinGet package.** `.github/workflows/winget.yml` no longer publishes `ChurchApps.FreeShow`.
 - **ChurchApps / B1 cloud sync.** Disabled unless `features.churchAppsCloudSync` is `true` in `product.json`. The UI hides the connect button, and the main-process sync functions return before opening a connection.
-- **Their donate prompt and analytics.** `features.upstreamDonatePrompt` and `features.upstreamAnalytics` are `false`.
+- **Their donate prompt and analytics.** `features.upstreamDonatePrompt` and `features.upstreamAnalytics` are `false`. The analytics flag is checked at the start of `trackEvent`, so scripture usage does not reach measurement id `G-CEE6P1QXG6` either.
 - **Sentry.** Upstream already refuses to start Sentry unless `public/release.json` says the build came from `ChurchApps/FreeShow` (`src/electron/IPC/responsesMain.ts`). `scripts/preBuild.js` writes `GITHUB_REPOSITORY` into that file. Our builds are not that repository, so crash reports are not sent to their project.
 
 ## Core-file hooks
@@ -93,7 +93,7 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/components/main/Top.svelte`, `Splash.svelte`, `ProfileSelector.svelte` | Visible product name. |
 | `src/frontend/components/main/popups/About.svelte` | Product name, GPL credit, and a "Based on FreeShow" link. |
 | `src/frontend/components/main/Tipbar.svelte` | Does not send people to ChurchApps fundraising. |
-| `src/frontend/utils/analytics.ts` | Does not send usage to FreeShow's analytics property. |
+| `src/frontend/utils/analytics.ts` | `trackEvent` returns immediately when analytics are off, including scripture usage. |
 | `src/frontend/utils/checkForUpdates.ts`, `popups/NewUpdate.svelte`, `popups/UpdateManager.svelte` | Update check and download links use this repo. |
 | `src/frontend/utils/startup.ts`, `cloudSync.ts` | No ChurchApps startup sync and no "connect cloud" prompt. |
 | `src/frontend/components/settings/tabs/Files.svelte`, `Connection.svelte` | ChurchApps connect / sync controls are hidden. |

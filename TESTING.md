@@ -30,7 +30,7 @@ A failure fails the job. npm and Electron downloads are cached.
 
 The smoke test:
 
-1. Silent install (`/S`). One-click NSIS uses `%LOCALAPPDATA%\Programs\<npm package name>`. That folder is still `freeshow` because `package.json` `name` is unchanged. The script finds `EveryJointSupplies.exe` under that Programs directory.
+1. Silent install (`/S`) into `%LOCALAPPDATA%\Programs\every-joint-supplies`. The job fails if that folder is missing or if `%LOCALAPPDATA%\Programs\freeshow` was created.
 2. Require the exe's ProductName to be Every Joint Supplies.
 3. Launch the exe and, within 30 seconds, require the process to be running and a window title of exactly Every Joint Supplies. The wait is the timeout: a hang or an early exit fails the job.
 4. Silent uninstall and require the exe to be gone.

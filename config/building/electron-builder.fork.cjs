@@ -72,6 +72,8 @@ module.exports = {
     executableName: product.executableName,
     artifactName: product.artifactName,
     extraMetadata: {
+        // Install folder and updater cache. productName still sets userData to %APPDATA%\Every Joint Supplies.
+        name: product.npmName,
         productName: product.productName,
         description: product.description,
         author: product.author,
