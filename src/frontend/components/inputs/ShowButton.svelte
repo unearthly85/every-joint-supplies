@@ -26,7 +26,9 @@
     export let isFirst: boolean = false
     export let isProject: boolean = false
     $: type = show.type || "show"
-    $: name = type === "show" ? $shows[show.id]?.name : type === "overlay" ? $overlays[show.id]?.name : type === "effect" ? $effects[show.id]?.name : type === "player" ? ($playerVideos[id] || show.data?.id ? $playerVideos[id]?.name || show.data?.name || show.data?.id : setNotFound(id)) : show.name
+    $: storedName = type === "show" ? $shows[show.id]?.name : type === "overlay" ? $overlays[show.id]?.name : type === "effect" ? $effects[show.id]?.name : type === "player" ? ($playerVideos[id] || show.data?.id ? $playerVideos[id]?.name || show.data?.name || show.data?.id : setNotFound(id)) : show.name
+    // A project item keeps the short label on the ref. The show file name stays the stored name.
+    $: name = isProject && show.name ? show.name : storedName
     // export let page: "side" | "drawer" = "drawer"
     export let match: null | number = null
     export let searchValue = ""

@@ -115,8 +115,9 @@ describe("Faith Covenant Sunday", () => {
         expect(stored.project.shows[4].id).toBe(`${service.id}--service`)
         expect(stored.project.shows[2].loop).toBe(false)
         expect(stored.project.shows[0].data.time).toBeUndefined()
-        expect(parseClock(stored.project.shows[2].data.time)).toBe(parseClock("10:27"))
-        expect(parseClock(stored.project.shows[4].data.time)).toBe(parseClock("10:32"))
+        expect(stored.project.shows[2].data.time).toBe("10:27")
+        expect(stored.project.shows[4].data.time).toBe("10:32")
+        expect(stored.project.shows.find((ref) => ref.id.endsWith("--song"))?.name).toBe("Song")
 
         const song = stored.shows[`${service.id}--song`]
         expect(song.settings.activeLayout).toBe("arrangement")
@@ -135,7 +136,7 @@ describe("Faith Covenant Sunday", () => {
         expect(video?.id).toBe("media/countdown.mp4")
         expect(video?.data.church.autoAdvance).toBe(true)
         expect(video?.data.church.timeframe).toEqual({ durationSeconds: 300, onMediaEnd: true })
-        expect(video?.name).toBe("Sunday 2026-11-22 – Countdown video")
+        expect(video?.name).toBe("Countdown video")
 
         const restored = fromStored(simulateFreeShowSave(JSON.parse(JSON.stringify(stored))))
         expect(restored.advertisedTime).toBe("10:30:00")
@@ -377,11 +378,17 @@ describe("Faith Covenant Sunday", () => {
         const stored = toStored(service)
         const scriptureId = `${service.id}--scripture`
         stored.shows[scriptureId].slides["psalm-100"].items[0].lines = [
-            { align: "", text: [{ value: "Make a joyful noise", style: "" }] },
-            { align: "", text: [{ value: "to the Lord", style: "" }] }
+            {
+                align: "",
+                text: [
+                    { value: "Make a ", style: "" },
+                    { value: "joyful", style: "font-weight: bold;" }
+                ]
+            },
+            { align: "", text: [{ value: "noise", style: "" }] }
         ]
         const restored = fromStored(stored)
-        expect(restored.sections[2].items.find((item) => item.id === "scripture")?.slides?.[0].text).toBe("Make a joyful noise\nto the Lord")
+        expect(restored.sections[2].items.find((item) => item.id === "scripture")?.slides?.[0].text).toBe("Make a joyful\nnoise")
         expect(restored.sections[2].items.filter((item) => item.type === "image" || item.type === "audio").map((item) => [item.type, item.mediaPath])).toEqual([
             ["image", "photo.png"],
             ["audio", "bed.mp3"]

@@ -92,7 +92,8 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/utils/language.ts` | Replaces the word `FreeShow` in translation strings with our product name. |
 | `src/frontend/components/main/Top.svelte`, `Splash.svelte`, `ProfileSelector.svelte` | Visible product name. |
 | `src/frontend/App.svelte` | Mounts the New Sunday panel (`src/extensions/church/SundayPanel.svelte`). It stays closed until a volunteer opens it. The service itself is stored as a normal project and shows. |
-| `src/frontend/components/show/Projects.svelte` | A "New Sunday" button on the project list and on an open project. |
+| `src/frontend/components/show/Projects.svelte` | A compact "Sunday" button on the project list and on an open project, plus a New Sunday row next to New project. |
+| `src/frontend/components/inputs/ShowButton.svelte` | A project item shows the short label stored on the project entry. The show file keeps its own longer name. |
 | `src/frontend/components/main/popups/About.svelte` | Product name, GPL credit, and a "Based on FreeShow" link. |
 | `src/frontend/components/main/Tipbar.svelte` | Does not send people to ChurchApps fundraising. |
 | `src/frontend/utils/analytics.ts` | `trackEvent` returns immediately when analytics are off, including scripture usage. |

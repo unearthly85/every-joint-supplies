@@ -386,7 +386,8 @@ export function nextSunday(from = new Date()): string {
 function sectionClock(kind: SectionKind, service: ChurchService): string | undefined {
     if (kind !== "warmup" && kind !== "service") return undefined
     const window = countdownWindow(service.timingMode, service.startTime, service.countdownDurationSeconds)
-    return formatClock(parseClock(kind === "warmup" ? window.starts : window.ends))
+    // FreeShow's time box reads 24-hour "HH:MM". Locale text is only for the booth sentence.
+    return (kind === "warmup" ? window.starts : window.ends).slice(0, 5)
 }
 
 const MEDIA_TYPES: ItemType[] = ["video", "image", "audio"]
@@ -404,11 +405,11 @@ function itemRef(service: ChurchService, item: ServiceItem, showId: string | und
         parts: item.parts,
         arrangement: item.arrangement
     }
-    const name = showFileName(service.name, item.name)
+    // The project list shows the short label. The show file uses the dated name.
     if (MEDIA_TYPES.includes(item.type)) {
-        return { id: item.mediaPath || item.id, type: item.type === "image" || item.type === "audio" ? item.type : "video", name, data: { church: blob } }
+        return { id: item.mediaPath || item.id, type: item.type === "image" || item.type === "audio" ? item.type : "video", name: item.name, data: { church: blob } }
     }
-    return { id: showId || `${service.id}--${item.id}`, type: "show", name, data: { church: blob } }
+    return { id: showId || `${service.id}--${item.id}`, type: "show", name: item.name, data: { church: blob } }
 }
 
 function buildShow(service: ChurchService, item: ServiceItem, created: number): { id: string; show: Show } | null {
@@ -573,8 +574,7 @@ function lastLayoutSlide(show: Show | undefined): SlideData | undefined {
 
 function slideText(slide: Slide | undefined): string {
     const lines = (slide?.items || []).flatMap((item) => item.lines || [])
-    const text = lines.flatMap((line) => (line.text || []).map((part) => part.value || ""))
-    return text.join("\n")
+    return lines.map((line) => (line.text || []).map((part) => part.value || "").join("")).join("\n")
 }
 
 function normalizeLabel(group: string | null | undefined): SongPartLabel | null {

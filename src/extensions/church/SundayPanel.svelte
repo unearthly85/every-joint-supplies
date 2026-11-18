@@ -84,8 +84,6 @@
 
         for (const [id, show] of Object.entries(stored.shows)) {
             show.name = checkName(show.name)
-            const ref = stored.project.shows.find((item) => item.id === id)
-            if (ref) ref.name = show.name
             shows.update((list) => ({
                 ...list,
                 [id]: { name: show.name, origin: show.origin, category: show.category, timestamps: show.timestamps }
