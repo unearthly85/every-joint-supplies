@@ -20,10 +20,10 @@ export interface GroupRecord {
     default?: boolean
 }
 
-/** FreeShow's group record. Tag gets T when the saved groups never set a shortcut. */
+/** FreeShow's group record. Tag gets T only when the saved groups have no shortcut at all. An empty string is a deliberate clear and stays. */
 export function ensureChurchGroups<T extends { [id: string]: GroupRecord }>(groups: T): T {
     const tag = groups.tag
-    if (!tag || tag.shortcut) return groups
+    if (!tag || tag.shortcut !== undefined) return groups
     return { ...groups, tag: { ...tag, shortcut: PART_SHORTCUTS.tag } }
 }
 
