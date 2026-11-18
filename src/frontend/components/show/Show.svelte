@@ -22,6 +22,7 @@
     import Section from "./Section.svelte"
     import ShowNotes from "./ShowNotes.svelte"
     import Slides from "./Slides.svelte"
+    import SundayOrder from "../../../extensions/church/SundayOrder.svelte"
 
     $: show = $activeShow
 
@@ -118,6 +119,7 @@
                     <FolderShow path={show.id} index={show.index || 0} />
                 {/key}
             {:else if (show.type || "show") === "show"}
+                <SundayOrder showId={$activeShow?.id || ""} />
                 <Slides showId={$activeShow?.id || ""} />
                 <Layouts />
             {:else if show.type === "show_placeholder"}

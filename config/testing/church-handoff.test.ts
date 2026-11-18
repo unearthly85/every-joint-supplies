@@ -29,7 +29,7 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await setClock(window, 10, 5)
         await expect.poll(() => outputText(window)).toContain("Welcome")
 
-        await window.locator("#show_sunday-2026-11-22-102700--scripture").getByRole("button", { name: "Scripture" }).click()
+        await window.locator("#projectArea").getByRole("button", { name: "Scripture", exact: true }).click()
         await setClock(window, 10, 27)
         await expect.poll(() => outputSnapshot(window), { timeout: 8000 }).toContain("playing countdown-short")
 
@@ -39,6 +39,7 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await window.getByRole("button", { name: "Welcome slides", exact: true }).dblclick()
         await setClock(window, 10, 40)
         await expect.poll(() => outputText(window)).toContain("Welcome")
+        await expect(window.getByTestId("booth-remaining")).toHaveText("Auto-advance off for this item")
 
         await setClock(window, 10, 10)
         await window.getByRole("button", { name: "Announcements", exact: true }).dblclick()
@@ -46,7 +47,7 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await setClock(window, 10, 27)
         await expect.poll(() => outputText(window)).toContain("Announcements")
         expect(await outputBackground(window)).not.toContain("countdown-short")
-        await expect(window.getByTestId("booth-remaining")).toHaveText("Auto-advance off for this item")
+        await expect(window.getByTestId("booth-remaining")).not.toHaveText("Auto-advance off for this item")
 
         await window.getByTestId("open-new-sunday").click()
         await window.getByTestId("countdown-finishes-at-start").check()

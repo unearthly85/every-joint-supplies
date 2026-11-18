@@ -54,7 +54,7 @@ export interface Timeframe {
 
 export interface SongPart {
     id: string
-    label: SongPartLabel
+    label: string
     text: string
 }
 
@@ -73,6 +73,8 @@ export interface ServiceItem {
     parts?: SongPart[]
     /** Part ids. The same id may appear more than once (an ad-hoc repeat). */
     arrangement?: string[]
+    /** The library show this Sunday's order was opened from. Edits stay on the Sunday show. */
+    libraryShowId?: string
     scripture?: string
     slides?: TextPage[]
     mediaPath?: string
@@ -120,6 +122,7 @@ interface ItemBlob {
     mediaPath?: string
     parts?: SongPart[]
     arrangement?: string[]
+    libraryShowId?: string
 }
 
 export interface StoredProject extends Project {
@@ -419,7 +422,8 @@ function itemRef(service: ChurchService, item: ServiceItem, showId: string | und
         slides: item.slides,
         mediaPath: item.mediaPath,
         parts: item.parts,
-        arrangement: item.arrangement
+        arrangement: item.arrangement,
+        libraryShowId: item.libraryShowId
     }
     // The project list shows the short label. The show file uses the dated name.
     if (MEDIA_TYPES.includes(item.type)) {
@@ -469,11 +473,14 @@ function textPages(item: ServiceItem): TextPage[] {
     return [{ id: "slide-1", text: item.name }]
 }
 
-function textSlide(group: SongPartLabel | null, text: string): Slide {
-    const fields = group ? SONG_GROUP_FIELDS[group] : null
+function textSlide(group: string | null, text: string): Slide {
+    const known = group && (SONG_PART_LABELS as readonly string[]).includes(group) ? (group as SongPartLabel) : null
+    const fields = known ? SONG_GROUP_FIELDS[known] : null
+    // A house slide has no group word on it. "." is FreeShow's hidden group name.
+    const house = !group
     return {
-        group,
-        globalGroup: group || undefined,
+        group: house ? "." : group,
+        globalGroup: known || undefined,
         color: fields?.color || null,
         settings: {},
         notes: "",
@@ -522,6 +529,7 @@ function readItem(stored: StoredService, ref: ProjectShowRef): ServiceItem {
         const song = readSong(show, blob)
         item.parts = song.parts
         item.arrangement = song.arrangement
+        if (blob?.libraryShowId) item.libraryShowId = blob.libraryShowId
         return item
     }
     if (type === "scripture") item.scripture = blob?.scripture || show?.reference?.data?.passage || slideText(firstSlide(show))
@@ -593,8 +601,10 @@ function slideText(slide: Slide | undefined): string {
     return lines.map((line) => (line.text || []).map((part) => part.value || "").join("")).join("\n")
 }
 
-function normalizeLabel(group: string | null | undefined): SongPartLabel | null {
-    const label = (group || "").trim().toLowerCase()
-    if ((SONG_PART_LABELS as readonly string[]).includes(label)) return label as SongPartLabel
-    return null
+function normalizeLabel(group: string | null | undefined): string | null {
+    const label = (group || "").trim()
+    if (!label || label === ".") return null
+    const lower = label.toLowerCase()
+    if ((SONG_PART_LABELS as readonly string[]).includes(lower)) return lower
+    return label
 }
