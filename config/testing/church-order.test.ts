@@ -57,6 +57,8 @@ test("a Sunday order overrides a saved song and the library file stays put", asy
         await window.getByRole("button", { name: "Song", exact: true }).click()
         const slide = window.locator("#showArea .slide").first()
         await expect(slide).toBeVisible()
+        const searchBackground = await window.getByTestId("song-search").evaluate((el) => getComputedStyle(el).backgroundColor)
+        expect(searchBackground).not.toBe("rgb(255, 255, 255)")
         await window.getByTestId("song-search").fill("Notes")
         await expect(window.getByTestId("song-results").locator("button")).toHaveCount(0)
         expect((await slide.boundingBox())!.y).toBeLessThan(700)
