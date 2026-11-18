@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { faithCovenantSunday, toStored } from "./model"
 import { systemTimeZone, timeZoneOffsetMs, zonedDateTime } from "./clock"
-import { armStep, clockFires, countdownInstant, planFromProject, type Plan } from "./handoff"
+import { armStep, clockFires, countdownInstant, formatRemaining, mediaMatches, planFromProject, type Plan } from "./handoff"
 
 const ZONE = "America/New_York"
 const DATE = "2026-11-22"
@@ -109,6 +109,22 @@ describe("section handoff", () => {
         expect(countdownInstant(springService, "ends").getTime() - countdownInstant(springService, "starts").getTime()).toBe(5 * 60 * 1000)
         expect(countdownInstant(fallService, "ends").getTime() - countdownInstant(fallService, "starts").getTime()).toBe(5 * 60 * 1000)
         expect(timeZoneOffsetMs(ZONE, springBefore)).not.toBe(timeZoneOffsetMs(ZONE, springAfter))
+    })
+
+    it("matches a media end only when the full path is the same", () => {
+        expect(mediaMatches("/videos/countdown.mp4", "/videos/countdown.mp4")).toBe(true)
+        expect(mediaMatches("C:\\videos\\countdown.mp4", "C:/videos/countdown.mp4")).toBe(true)
+        expect(mediaMatches("file:///videos/countdown.mp4", "/videos/countdown.mp4")).toBe(true)
+        expect(mediaMatches("/videos/countdown.mp4", "countdown.mp4")).toBe(false)
+        expect(mediaMatches("/videos/countdown.mp4", "/other/countdown.mp4")).toBe(false)
+        expect(mediaMatches("/videos/countdown.mp4", "")).toBe(false)
+    })
+
+    it("shows days and hours when the service is more than a day away", () => {
+        expect(formatRemaining(22 * 60 * 1000)).toBe("22:00")
+        expect(formatRemaining(0)).toBe("0:00")
+        expect(formatRemaining(6524 * 60 * 1000 + 5 * 1000)).toBe("4 days 12 hours")
+        expect(formatRemaining(86400 * 1000)).toBe("1 day")
     })
 
     it("reads a Sunday back out of the stored project", () => {

@@ -29,7 +29,6 @@ export class OutputHelper {
     // continue from outputted, or play active
     static advanceOutput(outputId: string, triggerKey: string = "", options: { slideLayers?: boolean; playNext?: boolean } = {}) {
         if (get(outLocked)) return
-        if (!options.playNext) churchNoteManual()
 
         // blur to remove tab highlight from slide after clicked, and using arrows
         if (document.activeElement?.closest(".slide") && !document.activeElement?.closest(".edit")) (document.activeElement as HTMLElement).blur()
@@ -155,6 +154,7 @@ export class OutputHelper {
             }
             const newItem = projectItems[newIndex]
             if (!newItem) return
+            if (!options.playNext) churchNoteManual({ projectIndex: newIndex })
 
             activeFocus.set({ id: newItem.id, index: newIndex, type: newItem.type || "show" })
             this.currentActiveShow = { time: 0, show: null }
@@ -177,6 +177,7 @@ export class OutputHelper {
 
         const newItem = projectItems[newIndex]
         if (!newItem) return
+        if (!options.playNext) churchNoteManual({ projectIndex: newIndex })
 
         this.runSectionAction(newItem)
 

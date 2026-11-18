@@ -1,7 +1,8 @@
-import { writable } from "svelte/store"
+import { get, writable } from "svelte/store"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { faithCovenantSunday, toStored } from "./model"
 import { setChurchClock } from "./clock"
+import { booth } from "./booth"
 
 const activeProject = writable<string | null>(null)
 const projects = writable<Record<string, unknown>>({})
@@ -95,8 +96,65 @@ describe("live handoff session", () => {
         setChurchClock(() => new Date(2026, 10, 22, 10, 20, 0))
         const { churchNoteManual, churchTick } = await import("./session")
         churchTick()
-        churchNoteManual()
+        churchNoteManual({ projectIndex: countdown })
         showLive(countdown, "background")
+        setChurchClock(() => new Date(2026, 10, 22, 10, 27, 0))
+        churchTick()
+        expect(advanced).toEqual([])
+    })
+
+    it("keeps the 10:27 handoff when the click stays on the live loop", async () => {
+        const stored = toStored(faithCovenantSunday("2026-11-22"))
+        projects.set({ [stored.projectId]: stored.project })
+        activeProject.set(stored.projectId)
+        const welcome = stored.project.shows.findIndex((ref) => ref.name === "Welcome slides")
+        const countdown = stored.project.shows.findIndex((ref) => ref.name === "Countdown video")
+        const showId = stored.project.shows[welcome].id
+        showLive(welcome)
+        setChurchClock(() => new Date(2026, 10, 22, 10, 5, 0))
+        const { churchNoteManual, churchTick } = await import("./session")
+        churchTick()
+        churchNoteManual({ projectIndex: welcome, showId })
+        churchNoteManual({ projectIndex: null, showId })
+        setChurchClock(() => new Date(2026, 10, 22, 10, 27, 0))
+        churchTick()
+        expect(advanced).toEqual([countdown])
+    })
+
+    it("says auto-advance is off after a real move, instead of a countdown", async () => {
+        const stored = toStored(faithCovenantSunday("2026-11-22"))
+        projects.set({ [stored.projectId]: stored.project })
+        activeProject.set(stored.projectId)
+        const welcome = stored.project.shows.findIndex((ref) => ref.name === "Welcome slides")
+        const announcement = stored.project.shows.findIndex((ref) => ref.name === "Announcements")
+        showLive(welcome)
+        setChurchClock(() => new Date(2026, 10, 22, 10, 10, 0))
+        const { churchNoteManual, churchTick } = await import("./session")
+        churchTick()
+        churchNoteManual({ projectIndex: announcement })
+        showLive(announcement)
+        churchTick()
+        const { AUTO_ADVANCE_OFF } = await import("./session")
+        expect(get(booth)?.remaining).toBe(AUTO_ADVANCE_OFF)
+        setChurchClock(() => new Date(2026, 10, 22, 10, 27, 0))
+        churchTick()
+        expect(advanced).toEqual([])
+    })
+
+    it("drops the handoff when auto-advance is turned off on the live item", async () => {
+        const stored = toStored(faithCovenantSunday("2026-11-22"))
+        projects.set({ [stored.projectId]: stored.project })
+        activeProject.set(stored.projectId)
+        const welcome = stored.project.shows.findIndex((ref) => ref.name === "Welcome slides")
+        showLive(welcome)
+        setChurchClock(() => new Date(2026, 10, 22, 10, 0, 0))
+        const { churchTick } = await import("./session")
+        churchTick()
+        stored.project.shows[welcome].data!.church!.autoAdvance = false
+        projects.set({ [stored.projectId]: stored.project })
+        churchTick()
+        const { AUTO_ADVANCE_OFF } = await import("./session")
+        expect(get(booth)?.remaining).toBe(AUTO_ADVANCE_OFF)
         setChurchClock(() => new Date(2026, 10, 22, 10, 27, 0))
         churchTick()
         expect(advanced).toEqual([])

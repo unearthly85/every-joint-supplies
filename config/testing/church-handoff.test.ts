@@ -23,6 +23,12 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await expect.poll(() => outputText(window)).toContain("Welcome")
         await setClock(window, 10, 0)
 
+        await setClock(window, 10, 5)
+        await window.getByRole("button", { name: "Welcome slides", exact: true }).dblclick()
+        await window.locator("#showArea").getByText("Welcome", { exact: true }).click()
+        await setClock(window, 10, 5)
+        await expect.poll(() => outputText(window)).toContain("Welcome")
+
         await window.locator("#show_sunday-2026-11-22-102700--scripture").getByRole("button", { name: "Scripture" }).click()
         await setClock(window, 10, 27)
         await expect.poll(() => outputSnapshot(window), { timeout: 8000 }).toContain("playing countdown-short")
@@ -40,6 +46,7 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await setClock(window, 10, 27)
         await expect.poll(() => outputText(window)).toContain("Announcements")
         expect(await outputBackground(window)).not.toContain("countdown-short")
+        await expect(window.getByTestId("booth-remaining")).toHaveText("Auto-advance off for this item")
 
         await window.getByTestId("open-new-sunday").click()
         await window.getByTestId("countdown-finishes-at-start").check()

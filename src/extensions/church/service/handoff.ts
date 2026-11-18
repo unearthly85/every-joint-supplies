@@ -10,6 +10,7 @@ import { zonedDateTime } from "./clock"
 export interface Step {
     index: number
     name: string
+    showId: string | null
     sectionKind: SectionKind | null
     autoAdvance: boolean
     untilTime: string | null
@@ -34,6 +35,9 @@ export interface Arm {
     generation: number
     dueAtMs: number | null
     watchMedia: boolean
+    autoAdvance: boolean
+    /** The operator left this item, so its clock must not be brought back. */
+    cancelled: boolean
 }
 
 export function countdownInstant(plan: Pick<Plan, "timeZone" | "date" | "timingMode" | "startTime" | "countdownDurationSeconds">, edge: "starts" | "ends"): Date {
@@ -66,15 +70,31 @@ export function armStep(plan: Plan, index: number, enteredAt: Date, generation: 
         enteredAtMs: enteredAt.getTime(),
         generation,
         dueAtMs: alreadyPassed ? null : due,
-        watchMedia: !!step && step.autoAdvance && step.onMediaEnd && !alreadyPassed
+        watchMedia: !!step && step.autoAdvance && step.onMediaEnd && !alreadyPassed,
+        autoAdvance: !!step?.autoAdvance,
+        cancelled: false
     }
 }
 
+/** Same file, compared as a full path. A shared file name is not a match. */
 export function mediaMatches(itemPath: string | null, endedId: string): boolean {
     if (!itemPath || !endedId) return false
-    if (itemPath === endedId) return true
-    const base = (value: string) => value.split(/[/\\]/).pop() || value
-    return itemPath.endsWith(endedId) || endedId.endsWith(itemPath) || base(itemPath) === base(endedId)
+    return canonicalMediaPath(itemPath) === canonicalMediaPath(endedId)
+}
+
+function canonicalMediaPath(value: string): string {
+    let path = value.trim()
+    if (path.toLowerCase().startsWith("file://")) {
+        path = path.slice("file://".length)
+        try {
+            path = decodeURIComponent(path)
+        } catch {
+            // Keep the undecoded path when the URL is malformed.
+        }
+    }
+    path = path.replace(/\\/g, "/")
+    if (/^\/[A-Za-z]:\//.test(path)) path = path.slice(1)
+    return path.replace(/\/+/g, "/")
 }
 
 /** The clock for this step has arrived. A newer generation means a manual advance already cancelled it. */
@@ -101,6 +121,7 @@ export function planFromProject(project: Project & { church?: { date: string; ad
         steps.push({
             index,
             name: ref.name || item.itemType || "Item",
+            showId: ref.type === "show" ? ref.id : null,
             sectionKind,
             autoAdvance,
             untilTime: timeframe?.untilTime || null,
@@ -123,6 +144,13 @@ export function planFromProject(project: Project & { church?: { date: string; ad
 export function formatRemaining(ms: number): string {
     if (ms <= 0) return "0:00"
     const total = Math.ceil(ms / 1000)
+    const days = Math.floor(total / 86400)
+    if (days > 0) {
+        const hours = Math.floor((total % 86400) / 3600)
+        const dayLabel = `${days} ${days === 1 ? "day" : "days"}`
+        if (!hours) return dayLabel
+        return `${dayLabel} ${hours} ${hours === 1 ? "hour" : "hours"}`
+    }
     const minutes = Math.floor(total / 60)
     const seconds = total % 60
     return `${minutes}:${String(seconds).padStart(2, "0")}`

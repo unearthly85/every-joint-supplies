@@ -7,7 +7,7 @@
         <p>Current time <strong data-testid="booth-now">{$booth.now}</strong></p>
         <p>Advertised time <strong data-testid="booth-advertised">{$booth.advertised}</strong></p>
         <p>Time remaining <strong data-testid="booth-remaining">{$booth.remaining}</strong></p>
-        <p data-testid="booth-countdown">{$booth.line}</p>
+        <p class="line" data-testid="booth-countdown">{$booth.line}</p>
     </aside>
 {/if}
 
@@ -25,5 +25,11 @@
 
     p {
         margin: 0;
+    }
+
+    .line {
+        flex: 1 0 100%;
+        min-width: 0;
+        white-space: normal;
     }
 </style>
