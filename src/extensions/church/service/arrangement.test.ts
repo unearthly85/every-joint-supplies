@@ -123,16 +123,51 @@ describe("FreeShow group and layout wrappers", () => {
     })
 
     it("searches songs only and returns a handful", () => {
-        const library = [
-            { id: "amazing-grace", name: "Amazing Grace", category: "song" },
-            { id: "sunday-song", name: "Amazing Sunday", origin: "church-service", category: "song" },
-            { id: "deck", name: "Amazing Slides", category: "presentation" },
-            ...Array.from({ length: 100 }, (_, index) => ({ id: `notes-${index}`, name: `Notes ${index}`, category: "presentation" }))
-        ]
+        const library = [{ id: "amazing-grace", name: "Amazing Grace", category: "song" }, { id: "sunday-song", name: "Amazing Sunday", origin: "church-service", category: "song" }, { id: "deck", name: "Amazing Slides", category: "presentation" }, ...Array.from({ length: 100 }, (_, index) => ({ id: `notes-${index}`, name: `Notes ${index}`, category: "presentation" }))]
         expect(songChoices(library, "current", "")).toEqual([])
         expect(songChoices(library, "current", "Amazing")).toEqual([{ id: "amazing-grace", name: "Amazing Grace", category: "song" }])
         const many = Array.from({ length: 20 }, (_, index) => ({ id: `hymn-${index}`, name: `Hymn ${index}`, category: "song" }))
         expect(songChoices(many, "current", "Hymn")).toHaveLength(5)
+    })
+
+    it("ranks exact matches before starts-with and contains", () => {
+        const library = [
+            { id: "hymn-101", name: "Hymn 101", category: "song" },
+            { id: "hymn", name: "Hymn", category: "song" },
+            { id: "hymn-2", name: "Hymn 2", category: "song" },
+            { id: "old-hymnal", name: "Old Hymnal", category: "song" },
+            { id: "hymn-1", name: "Hymn 1", category: "song" }
+        ]
+        expect(songChoices(library, "current", "Hymn", 10).map((song) => song.name)).toEqual(["Hymn", "Hymn 1", "Hymn 2", "Hymn 101", "Old Hymnal"])
+    })
+
+    it("sorts each rank in natural number order", () => {
+        const library = [
+            { id: "hymn-10", name: "Hymn 10", category: "song" },
+            { id: "hymn-2", name: "Hymn 2", category: "song" },
+            { id: "hymn-1", name: "Hymn 1", category: "song" }
+        ]
+        expect(songChoices(library, "current", "Hymn", 10).map((song) => song.name)).toEqual(["Hymn 1", "Hymn 2", "Hymn 10"])
+    })
+
+    it("matches and sorts without regard to case", () => {
+        const library = [
+            { id: "lower", name: "hymn 2", category: "song" },
+            { id: "upper", name: "HYMN 10", category: "song" },
+            { id: "exact", name: "HYMN", category: "song" },
+            { id: "title", name: "Hymn 1", category: "song" }
+        ]
+        expect(songChoices(library, "current", "hymn", 10).map((song) => song.name)).toEqual(["HYMN", "Hymn 1", "hymn 2", "HYMN 10"])
+    })
+
+    it("applies the limit after ranking and sorting", () => {
+        const library = [
+            { id: "contains-1", name: "Old Hymnal", category: "song" },
+            { id: "contains-2", name: "Even Older Hymnal", category: "song" },
+            { id: "starts", name: "Hymn 10", category: "song" },
+            { id: "exact", name: "Hymn", category: "song" }
+        ]
+        expect(songChoices(library, "current", "hymn", 2).map((song) => song.id)).toEqual(["exact", "starts"])
     })
 
     it("reads and stores an arrangement as layout slide ids", () => {

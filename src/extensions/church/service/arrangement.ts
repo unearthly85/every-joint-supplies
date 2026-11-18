@@ -68,7 +68,12 @@ export function applyServiceSequence(library: Show, order: string[]): Show {
 /** A new library show with an extra layout. The input show is not changed. */
 export function saveAsNewArrangement(library: Show, name: string, order: string[]): Show {
     const copy = structuredClone(library)
-    const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "arrangement"
+    const id =
+        name
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "") || "arrangement"
     const layoutId = copy.settings?.activeLayout || Object.keys(copy.layouts || {})[0] || ""
     const current = copy.layouts?.[layoutId]
     copy.layouts = {
@@ -163,12 +168,23 @@ export interface SongChoice {
 export function songChoices(library: SongChoice[], currentId: string, query: string, limit = 5): SongChoice[] {
     const needle = query.trim().toLowerCase()
     if (!needle) return []
+    const rank = (name: string | undefined): number => {
+        const lowered = (name || "").toLowerCase()
+        if (lowered === needle) return 0
+        if (lowered.startsWith(needle)) return 1
+        return 2
+    }
     return library
         .filter((show) => {
             if (!show.name || show.id === currentId) return false
             if (show.origin === "church-service") return false
             if (show.category && show.category !== "song") return false
             return show.name.toLowerCase().includes(needle)
+        })
+        .sort((a, b) => {
+            const diff = rank(a.name) - rank(b.name)
+            if (diff) return diff
+            return (a.name || "").localeCompare(b.name || "", undefined, { numeric: true, sensitivity: "base" })
         })
         .slice(0, limit)
 }
