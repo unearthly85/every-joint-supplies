@@ -16,6 +16,7 @@ import { convertTXTToString, getTXT } from "../../utils/dynamicTXT"
 import { send } from "../../utils/request"
 import { convertRSSToString, getRSS } from "../../utils/rss"
 import { runAction, slideHasAction } from "../actions/actions"
+import { churchOnMediaEnded } from "../../../extensions/church/service/session"
 import type { API_output_style } from "../actions/api"
 import { getInteraction } from "../drawer/pages/interactions"
 import { getCurrentTimerValue, getTimeUntilClock, playPauseGlobal } from "../drawer/timers/timers"
@@ -718,6 +719,7 @@ export async function checkNextAfterMedia(endedId: string, type: "media" | "audi
         didAdvance = true
     }
 
+    if (!didAdvance && churchOnMediaEnded()) return true
     return didAdvance
 }
 

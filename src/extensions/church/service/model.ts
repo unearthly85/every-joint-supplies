@@ -9,7 +9,7 @@ import type { Show, Slide, SlideData } from "../../../types/Show"
  * is a slide whose group is verse, chorus, bridge, or tag, and the arrangement
  * (including repeats) is that show's layout slide list. Our own fields live in
  * `data.church` and on `project.church`, which the project file already saves.
- * Nothing here runs a timer. The next task owns that.
+ * Wall-clock handoff lives in handoff.ts and uses FreeShow's existing timers.
  */
 
 export const SONG_PART_LABELS = ["verse", "chorus", "bridge", "tag"] as const
@@ -211,6 +211,7 @@ export interface FaithCovenantOptions {
     startTime?: string
     timingMode?: TimingMode
     countdownDurationSeconds?: number
+    countdownMediaPath?: string
     name?: string
 }
 
@@ -246,7 +247,7 @@ export function faithCovenantSunday(date: string, options: FaithCovenantOptions 
                 id: `${id}--countdown`,
                 kind: "warmup",
                 name: "Countdown",
-                items: [{ id: "countdown-video", type: "video", name: "Countdown video", mediaPath: "media/countdown.mp4", timeframe: countdown }]
+                items: [{ id: "countdown-video", type: "video", name: "Countdown video", mediaPath: options.countdownMediaPath || "media/countdown.mp4", timeframe: countdown }]
             },
             {
                 id: `${id}--service`,
@@ -377,6 +378,12 @@ export function showFileName(serviceName: string, itemName: string): string {
  * Project-list label. Only a Sunday item uses the short name on the project ref.
  * Other projects keep the show's stored name, which is what renames and imports update.
  */
+/** Prefer a video file's real length when the operator has picked one. */
+export function resolveCountdownSeconds(configured: number, mediaDurationSeconds?: number | null): number {
+    if (mediaDurationSeconds != null && mediaDurationSeconds > 0) return Math.round(mediaDurationSeconds)
+    return configured
+}
+
 export function projectItemLabel(isProject: boolean, refName: string | undefined, storedName: string | undefined, church: unknown): string | undefined {
     if (isProject && church && refName) return refName
     return storedName

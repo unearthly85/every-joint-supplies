@@ -91,9 +91,11 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/main.ts` | Document title from `product.json`. |
 | `src/frontend/utils/language.ts` | Replaces the word `FreeShow` in translation strings with our product name. |
 | `src/frontend/components/main/Top.svelte`, `Splash.svelte`, `ProfileSelector.svelte` | Visible product name. |
-| `src/frontend/App.svelte` | Mounts the New Sunday panel (`src/extensions/church/SundayPanel.svelte`). It stays closed until a volunteer opens it. The service itself is stored as a normal project and shows. |
+| `src/frontend/App.svelte` | Mounts the New Sunday panel and the booth time bar, and starts the Sunday handoff watch. |
 | `src/frontend/components/show/Projects.svelte` | A compact "Sunday" button on the project list and on an open project, plus a New Sunday row next to New project. |
 | `src/frontend/components/inputs/ShowButton.svelte` | A Sunday item (`data.church`) shows the short label on the project entry. Every other project item still shows the stored show name. |
+| `src/frontend/components/helpers/showActions.ts` | When a slide does not already advance on media end, a Sunday item with `on_media_end` uses that same action. |
+| `src/frontend/components/helpers/OutputHelper.ts` | A manual advance clears the pending Sunday handoff before the clock can move again. |
 | `src/frontend/components/main/popups/About.svelte` | Product name, GPL credit, and a "Based on FreeShow" link. |
 | `src/frontend/components/main/Tipbar.svelte` | Does not send people to ChurchApps fundraising. |
 | `src/frontend/utils/analytics.ts` | `trackEvent` returns immediately when analytics are off, including scripture usage. |

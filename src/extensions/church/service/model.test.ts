@@ -11,6 +11,7 @@ import {
     nextSunday,
     parseClock,
     projectItemLabel,
+    resolveCountdownSeconds,
     showFileName,
     simulateFreeShowSave,
     timeframeIsSet,
@@ -364,6 +365,8 @@ describe("Faith Covenant Sunday", () => {
         expect(projectItemLabel(true, "Song", "Sunday 2026-11-22 – Song", { itemId: "song" })).toBe("Song")
         expect(projectItemLabel(true, "Pasted title", "Amazing Grace", undefined)).toBe("Amazing Grace")
         expect(projectItemLabel(false, "Song", "Sunday 2026-11-22 – Song", { itemId: "song" })).toBe("Sunday 2026-11-22 – Song")
+        expect(resolveCountdownSeconds(300, 92.4)).toBe(92)
+        expect(resolveCountdownSeconds(300, null)).toBe(300)
         expect(first.project.shows.find((ref) => ref.id.endsWith("--pre-service"))?.id).not.toBe(second.project.shows.find((ref) => ref.id.endsWith("--pre-service"))?.id)
     })
 

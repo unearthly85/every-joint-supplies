@@ -13,6 +13,7 @@ import { getAllActiveOutputIds, isOutputBound, setOutput } from "./output"
 import { checkActionTrigger, getFewestOutputLines, getItemWithMostLines, playPdf, updateOut } from "./showActions"
 import { _show } from "./shows"
 import { runActionId } from "../actions/actions"
+import { churchNoteManual } from "../../../extensions/church/service/session"
 
 type Options = { isSpace: boolean; slideLayers: boolean; playNext: boolean }
 
@@ -28,6 +29,7 @@ export class OutputHelper {
     // continue from outputted, or play active
     static advanceOutput(outputId: string, triggerKey: string = "", options: { slideLayers?: boolean; playNext?: boolean } = {}) {
         if (get(outLocked)) return
+        if (!options.playNext) churchNoteManual()
 
         // blur to remove tab highlight from slide after clicked, and using arrows
         if (document.activeElement?.closest(".slide") && !document.activeElement?.closest(".edit")) (document.activeElement as HTMLElement).blur()

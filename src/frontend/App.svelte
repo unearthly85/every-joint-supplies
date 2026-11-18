@@ -24,8 +24,11 @@
     import { keydown } from "./utils/shortcuts"
     import { startup } from "./utils/startup"
     import SundayPanel from "../extensions/church/SundayPanel.svelte"
+    import BoothStatus from "../extensions/church/BoothStatus.svelte"
+    import { watchChurchHandoff } from "../extensions/church/service/runtime"
 
     startup()
+    watchChurchHandoff()
 
     $: isWindows = !$currentWindow && $os.platform === "win32"
 
@@ -95,6 +98,7 @@
 
             <MainLayout />
             <SundayPanel />
+            <BoothStatus />
 
             {#if ready && Object.keys($profiles).filter((a) => a !== "admin").length && $activeProfile === null}
                 <ProfileSelector />

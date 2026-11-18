@@ -9,7 +9,7 @@
     import { checkName } from "../../frontend/components/helpers/show"
     import { activeProject, projects, shows, showsCache, statusIndicator } from "../../frontend/stores"
     import { save } from "../../frontend/utils/save"
-    import { canonicalClock, countdownLine, FAITH_COVENANT_SUNDAY, faithCovenantSunday, formatClock, nextSunday, parseClock, toStored, type TimingMode } from "./service/model"
+    import { canonicalClock, countdownLine, FAITH_COVENANT_SUNDAY, faithCovenantSunday, formatClock, nextSunday, parseClock, resolveCountdownSeconds, toStored, type TimingMode } from "./service/model"
 
     let serviceDate = nextSunday()
     let advertisedTime = FAITH_COVENANT_SUNDAY.advertisedTime
@@ -18,6 +18,8 @@
     let startField = formatClock(parseClock(startTime))
     let countdownMinutes = 5
     let countdownSeconds = 0
+    let countdownMediaPath = "media/countdown.mp4"
+    let countdownVideoLabel = ""
     let finishesAtStart = false
     let problem = ""
 
@@ -61,6 +63,23 @@
         })
     }
 
+    function pickCountdownVideo(event: Event) {
+        const file = (event.currentTarget as HTMLInputElement).files?.[0] as (File & { path?: string }) | undefined
+        if (!file) return
+        countdownMediaPath = file.path || file.name
+        countdownVideoLabel = file.name
+        const url = URL.createObjectURL(file)
+        const video = document.createElement("video")
+        video.preload = "metadata"
+        video.src = url
+        video.onloadedmetadata = () => {
+            const seconds = resolveCountdownSeconds(durationSeconds, video.duration)
+            countdownMinutes = Math.floor(seconds / 60)
+            countdownSeconds = seconds % 60
+            URL.revokeObjectURL(url)
+        }
+    }
+
     async function startSunday() {
         problem = ""
         if (!serviceDate) {
@@ -69,7 +88,7 @@
         }
         let stored: ReturnType<typeof toStored>
         try {
-            stored = toStored(faithCovenantSunday(serviceDate, { advertisedTime, startTime, timingMode, countdownDurationSeconds: durationSeconds }))
+            stored = toStored(faithCovenantSunday(serviceDate, { advertisedTime, startTime, timingMode, countdownDurationSeconds: durationSeconds, countdownMediaPath }))
         } catch {
             problem = "Enter times like 10:30 AM and 10:27 AM"
             return
@@ -125,6 +144,11 @@
             <label>
                 Start time
                 <input data-testid="start-time" type="text" bind:value={startField} on:change={(event) => commitTime("start", event.currentTarget.value)} />
+            </label>
+            <label>
+                Countdown video
+                <input data-testid="countdown-video" type="file" accept="video/*" on:change={pickCountdownVideo} />
+                {#if countdownVideoLabel}<span>{countdownVideoLabel}</span>{/if}
             </label>
             <div class="length">
                 <span>Countdown length</span>
