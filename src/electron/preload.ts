@@ -20,6 +20,8 @@ const storedReceivers: {
     [key: string]: (e: IpcRendererEvent, args: any) => void
 } = {}
 
+if (process.env.EJS_TEST_CLOCK === "1") contextBridge.exposeInMainWorld("__ejsTestClock", true)
+
 contextBridge.exposeInMainWorld("api", {
     send: (channel: ValidChannels, data: any, id?: string) => {
         if (LOG_MESSAGES && appLoaded && !filteredChannels.includes(channel) && !filteredChannelsData.includes(data?.channel)) console.info("TO ELECTRON [" + channel + "]: ", data)

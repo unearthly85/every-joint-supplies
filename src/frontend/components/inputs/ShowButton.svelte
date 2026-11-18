@@ -17,6 +17,7 @@
     import { clearSlide } from "../output/clear"
     import { getTextSnippet, highlightText } from "../quicksearch/searchHighlight"
     import { projectItemLabel } from "../../../extensions/church/service/model"
+    import { noteItemDoubleClick } from "../../../extensions/church/service/hooks"
     import HiddenInput from "./HiddenInput.svelte"
     import MaterialButton from "./MaterialButton.svelte"
 
@@ -149,7 +150,9 @@
 
     async function doubleClick(e: ClickEvent) {
         if (type === "show_placeholder") return
-        if (editActive || $outLocked || e.detail.target.closest("input")) return
+        const blocked = editActive || $outLocked || !!e.detail.target.closest("input")
+        noteItemDoubleClick(blocked, { projectIndex: index, showId: type === "show" ? id : null })
+        if (blocked) return
 
         let outputId: string = getActiveOutputs($outputs, false, true, true)[0]
         let currentOutput = $outputs[outputId] || {}

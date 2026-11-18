@@ -40,6 +40,7 @@ export async function launchChurchApp(existing?: ChurchDirs): Promise<{ app: Ele
             HOME: dirs.home,
             LANG: "en_US.UTF-8",
             NODE_ENV: "production",
+            EJS_TEST_CLOCK: "1",
             FS_MOCK_STORE_PATH: dirs.store
         }
     })

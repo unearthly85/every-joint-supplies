@@ -13,6 +13,7 @@ import { getAllActiveOutputIds, isOutputBound, setOutput } from "./output"
 import { checkActionTrigger, getFewestOutputLines, getItemWithMostLines, playPdf, updateOut } from "./showActions"
 import { _show } from "./shows"
 import { runActionId } from "../actions/actions"
+import { churchNoteManual } from "../../../extensions/church/service/session"
 
 type Options = { isSpace: boolean; slideLayers: boolean; playNext: boolean }
 
@@ -153,6 +154,7 @@ export class OutputHelper {
             }
             const newItem = projectItems[newIndex]
             if (!newItem) return
+            if (!options.playNext) churchNoteManual({ projectIndex: newIndex })
 
             activeFocus.set({ id: newItem.id, index: newIndex, type: newItem.type || "show" })
             this.currentActiveShow = { time: 0, show: null }
@@ -175,6 +177,7 @@ export class OutputHelper {
 
         const newItem = projectItems[newIndex]
         if (!newItem) return
+        if (!options.playNext) churchNoteManual({ projectIndex: newIndex })
 
         this.runSectionAction(newItem)
 

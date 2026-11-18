@@ -11,6 +11,7 @@
     import { getActiveOutputs, refreshOut, setOutput } from "../helpers/output"
     import { getCachedShow } from "../helpers/show"
     import { checkActionTrigger, getFewestOutputLines, getFewestOutputLinesReveal, getItemWithMostLines, updateOut } from "../helpers/showActions"
+    import { noteSlideClick } from "../../../extensions/church/service/hooks"
     import { _show } from "../helpers/shows"
     import T from "../helpers/T.svelte"
     import MaterialButton from "../inputs/MaterialButton.svelte"
@@ -95,7 +96,9 @@
     let disableAutoScroll = false
     function slideClick(e: any, index: number) {
         // TODO: duplicate function of "preview:126 - updateOut"
-        if ($outLocked || e.ctrlKey || e.metaKey || e.shiftKey) return
+        const blocked = $outLocked || e.ctrlKey || e.metaKey || e.shiftKey
+        noteSlideClick(blocked, { projectIndex: projectIndex >= 0 ? projectIndex : null, showId })
+        if (blocked) return
 
         customActionActivation("slide_click")
 
