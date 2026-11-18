@@ -216,4 +216,34 @@
     .saved {
         margin-top: 8px;
     }
+
+    .saved label {
+        display: flex;
+        flex: 1;
+        align-items: center;
+        gap: 6px;
+    }
+
+    input {
+        flex: 1;
+        width: 100%;
+        background-color: var(--primary-darker);
+        color: var(--text);
+        border: 1px solid var(--primary-lighter);
+        border-radius: 4px;
+        padding: 5px 10px;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        outline-offset: -2px;
+    }
+
+    input::placeholder {
+        color: var(--text);
+        opacity: 0.5;
+    }
+
+    input:focus {
+        outline: 2px solid var(--secondary);
+    }
 </style>
