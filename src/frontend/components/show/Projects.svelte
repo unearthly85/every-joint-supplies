@@ -393,7 +393,7 @@
                         </p>
 
                         <div class="right context">
-                            <MaterialButton data-testid="open-new-sunday" icon="add" iconSize={1.1} title="New Sunday" style="width: 32px;height: 100%;padding: 0.3em 0.5em;" on:click={() => sundayPanelOpen.set(true)} white />
+                            <MaterialButton data-testid="open-new-sunday" icon="calendar" iconSize={1.1} title="New Sunday" style="width: 32px;height: 100%;padding: 0.3em 0.5em;" on:click={() => sundayPanelOpen.set(true)} white />
                             <MaterialButton style="width: 32px;height: 100%;padding: 0.3em 0.5em;border-bottom-right-radius: 10px;{showProjectDropdown ? '' : 'opacity: 0.8;'}" title="create_show.more_options" icon="more" on:click={() => (showProjectDropdown = !showProjectDropdown)} white={!showProjectDropdown}>
                                 <!-- prevent force "white" -->
                                 <span style="display: none;"></span>
@@ -490,7 +490,7 @@
 
                 {#if !showProjectsOptions}
                     <div class="right">
-                        <MaterialButton data-testid="open-new-sunday" icon="add" iconSize={1.1} title="New Sunday" style="width: 32px;height: 100%;padding: 0.3em 0.5em;" on:click={() => sundayPanelOpen.set(true)} white />
+                        <MaterialButton data-testid="open-new-sunday" icon="calendar" iconSize={1.1} title="New Sunday" style="width: 32px;height: 100%;padding: 0.3em 0.5em;" on:click={() => sundayPanelOpen.set(true)} white />
                         <MaterialButton style="width: 32px;height: 100%;padding: 0.3em 0.5em;border-bottom-right-radius: 10px;{showProjectDropdown ? '' : 'opacity: 0.8;'}" title="create_show.more_options" icon="more" on:click={() => (showProjectDropdown = !showProjectDropdown)} white={!showProjectDropdown}>
                             <span style="display: none;"></span>
                         </MaterialButton>
@@ -551,7 +551,7 @@
                         <T id="formats.project" />
                     </MaterialButton>
 
-                    <MaterialButton variant="outlined" icon="add" title="New Sunday" on:click={() => { addMenuOpen = false; sundayPanelOpen.set(true) }}>New Sunday</MaterialButton>
+                    <MaterialButton variant="outlined" icon="calendar" title="New Sunday" on:click={() => { addMenuOpen = false; sundayPanelOpen.set(true) }}>New Sunday</MaterialButton>
 
                     <MaterialButton variant="outlined" icon="folder" title="new.folder" on:click={() => createProject(true)} white>
                         <T id="media.folder_type" />

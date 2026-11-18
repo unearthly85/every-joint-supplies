@@ -10,6 +10,7 @@ import {
     fromStored,
     nextSunday,
     parseClock,
+    projectItemLabel,
     showFileName,
     simulateFreeShowSave,
     timeframeIsSet,
@@ -360,6 +361,9 @@ describe("Faith Covenant Sunday", () => {
         expect(secondNames).toContain(showFileName("Sunday 2026-11-29", "Song"))
         expect(firstNames.filter((name) => secondNames.includes(name))).toEqual([])
         expect(firstNames.some((name) => name === "Song")).toBe(false)
+        expect(projectItemLabel(true, "Song", "Sunday 2026-11-22 – Song", { itemId: "song" })).toBe("Song")
+        expect(projectItemLabel(true, "Pasted title", "Amazing Grace", undefined)).toBe("Amazing Grace")
+        expect(projectItemLabel(false, "Song", "Sunday 2026-11-22 – Song", { itemId: "song" })).toBe("Sunday 2026-11-22 – Song")
         expect(first.project.shows.find((ref) => ref.id.endsWith("--pre-service"))?.id).not.toBe(second.project.shows.find((ref) => ref.id.endsWith("--pre-service"))?.id)
     })
 

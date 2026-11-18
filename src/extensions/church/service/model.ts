@@ -373,6 +373,15 @@ export function showFileName(serviceName: string, itemName: string): string {
     return `${serviceName} – ${itemName}`
 }
 
+/**
+ * Project-list label. Only a Sunday item uses the short name on the project ref.
+ * Other projects keep the show's stored name, which is what renames and imports update.
+ */
+export function projectItemLabel(isProject: boolean, refName: string | undefined, storedName: string | undefined, church: unknown): string | undefined {
+    if (isProject && church && refName) return refName
+    return storedName
+}
+
 export function nextSunday(from = new Date()): string {
     const date = new Date(from.getFullYear(), from.getMonth(), from.getDate())
     const day = date.getDay()

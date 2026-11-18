@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test"
-import { mkdirSync, readdirSync } from "node:fs"
+import { readdirSync } from "node:fs"
 import { join } from "node:path"
 import { launchChurchApp } from "./electronHarness"
 
@@ -10,8 +10,7 @@ const FIRST_SHOWS = [
     "Sunday 2026-11-22 – Welcome slides.show"
 ]
 
-test("two Sundays keep their own songs, and the preview is visible after start", async () => {
-    mkdirSync("/opt/cursor/artifacts", { recursive: true })
+test("two Sundays keep their own songs, and the preview is visible after start", async ({}, testInfo) => {
     const first = await launchChurchApp()
     const dirs = first.dirs
     try {
@@ -21,7 +20,7 @@ test("two Sundays keep their own songs, and the preview is visible after start",
         await expect(window.getByTestId("new-sunday")).toHaveCount(0)
         await expect(window.locator("#previewArea")).toBeVisible()
         await expectNoOverlap(window, "Projects")
-        await window.locator(".tabs .header").screenshot({ path: "/opt/cursor/artifacts/projects-header.png" })
+        await window.locator(".tabs .header").screenshot({ path: testInfo.outputPath("projects-header.png") })
 
         await window.getByTestId("open-new-sunday").click()
         const panel = window.getByTestId("new-sunday")
@@ -42,7 +41,7 @@ test("two Sundays keep their own songs, and the preview is visible after start",
         await expect(window.getByText("Service", { exact: true })).toBeVisible()
         await expect(window.getByRole("button", { name: "Song", exact: true })).toBeVisible()
         await expectNoOverlap(window, "Sunday 2026-11-22")
-        await window.locator(".tabs .header").screenshot({ path: "/opt/cursor/artifacts/project-header.png" })
+        await window.locator(".tabs .header").screenshot({ path: testInfo.outputPath("project-header.png") })
 
         await window.getByText("Countdown", { exact: true }).click()
         await expect(window.locator("#showArea input[type='time']")).toHaveValue("10:27")
