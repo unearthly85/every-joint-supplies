@@ -21,7 +21,7 @@ export interface ChurchDirs {
  * files go to a temporary data folder rather than ~/Documents/FreeShow.
  * Pass the same dirs back in to restart against that folder.
  */
-export async function launchChurchApp(existing?: ChurchDirs): Promise<{ app: ElectronApplication; window: Page; dirs: ChurchDirs; close: (options?: { keep?: boolean }) => Promise<void> }> {
+export async function launchChurchApp(existing?: ChurchDirs, prepare?: (dirs: ChurchDirs) => void): Promise<{ app: ElectronApplication; window: Page; dirs: ChurchDirs; close: (options?: { keep?: boolean }) => Promise<void> }> {
     const dirs: ChurchDirs = existing || {
         store: mkdtempSync(join(tmpdir(), "ejs-store-")),
         data: mkdtempSync(join(tmpdir(), "ejs-data-")),
@@ -31,6 +31,7 @@ export async function launchChurchApp(existing?: ChurchDirs): Promise<{ app: Ele
     if (!existsSync(join(dirs.store, "settings.json"))) {
         writeFileSync(join(dirs.store, "settings.json"), JSON.stringify({ initialized: true, alertUpdates: false }))
     }
+    prepare?.(dirs)
 
     const app = await electron.launch({
         args: [repoRoot, "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--lang=en-US"],

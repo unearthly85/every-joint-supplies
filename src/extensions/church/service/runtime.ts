@@ -3,7 +3,8 @@ import { getAllActiveOutputIds, setOutput } from "../../../frontend/components/h
 import { getMedia } from "../../../frontend/components/helpers/media"
 import { AudioPlayer } from "../../../frontend/audio/audioPlayer"
 import { openProjectItem } from "../../../frontend/components/show/project"
-import { activeProject, outputs, playingVideos, projects, showsCache } from "../../../frontend/stores"
+import { activeProject, groups, outputs, playingVideos, projects, showsCache } from "../../../frontend/stores"
+import { ensureChurchGroups } from "./arrangement"
 import { isMainWindow } from "../../../frontend/utils/common"
 import { testClockEnabled } from "./clock"
 import { churchTick, onChurchAdvance } from "./session"
@@ -51,6 +52,7 @@ export function watchChurchHandoff() {
         publishTestOutput()
     }
     if (testClockEnabled()) (globalThis as { __ejsTick?: () => void }).__ejsTick = tick
+    groups.update((value) => ensureChurchGroups(value))
     publishTestOutput()
     const loop = () => {
         tick()

@@ -15,7 +15,8 @@ vi.mock("../../../frontend/stores", () => ({
     projects,
     showsCache,
     outputs: writable({}),
-    playingVideos: writable([])
+    playingVideos: writable([]),
+    groups: { update: (fn: (value: object) => object) => fn({}) }
 }))
 vi.mock("../../../frontend/components/helpers/output", () => ({
     getAllActiveOutputIds: () => ["out"],

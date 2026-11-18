@@ -103,12 +103,24 @@ function boothView(plan: Plan, arm: Arm | null, now: Date) {
     const start = countdownInstant(plan, "starts").getTime()
     const end = countdownInstant(plan, "ends").getTime()
     const step = arm ? plan.steps.find((item) => item.index === arm.index) : null
-    const handedOff = !!arm && arm.dueAtMs == null && (arm.cancelled || step?.autoAdvance === false)
     const target = arm?.dueAtMs ?? (now.getTime() < start ? start : end)
     return {
         now: formatClock(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()),
         advertised: formatClock(parseClock(plan.advertisedTime)),
-        remaining: handedOff ? AUTO_ADVANCE_OFF : formatRemaining(target - now.getTime()),
+        remaining: remainingText(step, arm, target - now.getTime()),
         line: countdownLine(plan)
     }
+}
+
+function stepHadTimeframe(step: { durationSeconds: number | null; untilTime: string | null; onMediaEnd: boolean } | null | undefined): boolean {
+    if (!step) return false
+    return step.durationSeconds != null || !!step.untilTime || step.onMediaEnd
+}
+
+function remainingText(step: { durationSeconds: number | null; untilTime: string | null; onMediaEnd: boolean; autoAdvance: boolean } | null | undefined, arm: Arm | null, fallbackMs: number): string {
+    const hadTimeframe = stepHadTimeframe(step)
+    const passed = !!arm && hadTimeframe && arm.autoAdvance && arm.dueAtMs == null
+    const turnedOff = !!arm && hadTimeframe && step?.autoAdvance === false
+    if (hadTimeframe && (passed || turnedOff || arm?.cancelled)) return AUTO_ADVANCE_OFF
+    return formatRemaining(fallbackMs)
 }

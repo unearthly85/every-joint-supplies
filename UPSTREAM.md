@@ -94,6 +94,7 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/App.svelte` | Mounts the New Sunday panel and starts the Sunday handoff watch. |
 | `src/frontend/MainLayout.svelte` | Docks the booth time bar above the output preview. |
 | `src/frontend/components/show/Projects.svelte` | A compact "Sunday" button on the project list and on an open project, plus a New Sunday row next to New project. |
+| `src/frontend/components/show/Show.svelte` | Shows "This Sunday's order" on a church song. |
 | `src/frontend/components/inputs/ShowButton.svelte` | A Sunday item (`data.church`) shows the short label. A double-click that puts a different item on the output is a manual move. |
 | `src/frontend/components/helpers/showActions.ts` | When a slide does not already advance on media end, a Sunday item with `on_media_end` uses that same action. |
 | `src/frontend/components/helpers/OutputHelper.ts` | A manual advance clears the pending Sunday handoff before the clock can move again. |
