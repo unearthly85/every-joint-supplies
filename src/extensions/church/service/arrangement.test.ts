@@ -105,6 +105,14 @@ describe("FreeShow group and layout wrappers", () => {
         expect(ensureChurchGroups({ tag: { name: "tag", shortcut: "X" } }).tag.shortcut).toBe("X")
     })
 
+    it("fills T only when the tag group has no shortcut property at all", () => {
+        expect(ensureChurchGroups({ tag: { name: "tag" } }).tag.shortcut).toBe("T")
+        expect(ensureChurchGroups({ tag: { name: "tag", shortcut: "" } }).tag.shortcut).toBe("")
+        expect(ensureChurchGroups({ tag: { name: "tag", shortcut: "X" } }).tag.shortcut).toBe("X")
+        const groups = { verse: { name: "verse", shortcut: "V" } }
+        expect(ensureChurchGroups(groups)).toBe(groups)
+    })
+
     it("keeps a layout slide's background and other settings when the order changes", () => {
         const existing = [
             { id: "verse-1", disabled: true, background: "bg1", color: "#111" },
