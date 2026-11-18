@@ -29,7 +29,7 @@ test("the live output follows the countdown, a go-back, an early click, and mode
         await setClock(window, 10, 5)
         await expect.poll(() => outputText(window)).toContain("Welcome")
 
-        await window.locator("#show_sunday-2026-11-22-102700--scripture").getByRole("button", { name: "Scripture" }).click()
+        await window.locator("#projectArea").getByRole("button", { name: "Scripture", exact: true }).click()
         await setClock(window, 10, 27)
         await expect.poll(() => outputSnapshot(window), { timeout: 8000 }).toContain("playing countdown-short")
 

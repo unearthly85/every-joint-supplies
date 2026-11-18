@@ -2,7 +2,7 @@
     import { get } from "svelte/store"
     import { outputs, projects, shows, showsCache } from "../../frontend/stores"
     import { loadShows } from "../../frontend/components/helpers/setShow"
-    import { appendPart, applyServiceSequence, layoutForOrder, movePart, nextAfterJump, readLayoutOrder, saveAsNewArrangement, skipPart, titleAt } from "./service/arrangement"
+    import { appendPart, applyServiceSequence, arrangementName, layoutForOrder, movePart, nextAfterJump, nextHint, orderTitles, readLayoutOrder, saveAsNewArrangement, skipPart, songChoices } from "./service/arrangement"
 
     export let showId = ""
 
@@ -13,10 +13,19 @@
     $: layoutId = song?.settings?.activeLayout || ""
     $: order = song ? readLayoutOrder(song, layoutId) : []
     $: labels = Object.fromEntries(Object.entries(song?.slides || {}).map(([id, slide]) => [id, slide.group && slide.group !== "." ? slide.group : "slide"]))
-    $: librarySongs = Object.entries($shows).filter(([id, show]) => id !== showId && show?.name && show.origin !== "church-service")
+    $: titles = orderTitles(order, labels, Object.keys(song?.slides || {}))
+    $: serviceDate = ($projects[projectId] as { church?: { date?: string } } | undefined)?.church?.date || ""
+    let query = ""
+    let pendingId = ""
+    $: matches = songChoices(
+        Object.entries($shows).map(([id, show]) => ({ id, name: show?.name, origin: show?.origin, category: show?.category })),
+        showId,
+        query
+    )
 
     $: liveIndex = liveSlideIndex(showId, $outputs)
     $: next = liveIndex == null ? null : nextAfterJump(order, labels, liveIndex)
+    $: hint = nextHint(liveIndex != null, next?.title || null, titles[0] || null)
     $: dragged = -1
 
     function liveSlideIndex(id: string, outs: typeof $outputs): number | null {
@@ -25,10 +34,6 @@
             if (slide?.id === id && typeof slide.index === "number") return slide.index
         }
         return null
-    }
-
-    function titles(ids: string[]): string[] {
-        return ids.map((_, index) => titleAt(ids, labels, index))
     }
 
     function commit(ids: string[]) {
@@ -87,11 +92,20 @@
         if (!libraryId) return
         const library = get(showsCache)[libraryId]
         if (!library) return
-        const saved = saveAsNewArrangement(library, "This Sunday", order)
+        const existing = Object.values(library.layouts || {}).map((layout) => layout?.name || "")
+        const saved = saveAsNewArrangement(library, arrangementName(serviceDate, existing), order)
         showsCache.update((all) => {
             all[libraryId] = saved
             return all
         })
+    }
+
+    function chooseSong(id: string) {
+        if (order.length) {
+            pendingId = id
+            return
+        }
+        void useLibrary(id)
     }
 
     function allowDrop(event: DragEvent) {
@@ -102,9 +116,9 @@
 {#if song}
     <section class="order" data-testid="sunday-order" aria-label="This Sunday's order">
         <h2>This Sunday's order</h2>
-        <p data-testid="next-part">{next ? `Next: ${next.title}` : order.length ? `Next: ${titles(order)[0]}` : "Next: —"}</p>
+        <p data-testid="next-part">{hint}</p>
         <ol>
-            {#each titles(order) as title, index}
+            {#each titles as title, index}
                 <li
                     draggable="true"
                     data-testid={"order-" + index}
@@ -116,6 +130,8 @@
                     }}
                 >
                     <span>{title}</span>
+                    <button type="button" data-testid={"up-" + index} disabled={index === 0} on:click={() => commit(movePart(order, index, index - 1))}>Up</button>
+                    <button type="button" data-testid={"down-" + index} disabled={index === titles.length - 1} on:click={() => commit(movePart(order, index, index + 1))}>Down</button>
                     <button type="button" data-testid={"skip-" + index} on:click={() => commit(skipPart(order, index))}>Skip</button>
                 </li>
             {/each}
@@ -127,14 +143,22 @@
                 <button type="button" data-testid="save-arrangement" on:click={saveArrangement}>Save as new arrangement</button>
             {/if}
         </div>
-        {#if librarySongs.length}
-            <div class="saved">
-                <p>Start from a saved song</p>
-                {#each librarySongs as [id, saved]}
-                    <button type="button" data-testid={"use-library-" + id} on:click={() => useLibrary(id)}>{saved.name}</button>
+        <div class="saved">
+            <label>
+                Start from a saved song
+                <input data-testid="song-search" placeholder="Search songs" bind:value={query} />
+            </label>
+            <div data-testid="song-results">
+                {#each matches as saved}
+                    <button type="button" data-testid={"song-result-" + saved.id} on:click={() => chooseSong(saved.id)}>{saved.name}</button>
                 {/each}
             </div>
-        {/if}
+            {#if pendingId}
+                <p>Replace this Sunday's song with {matches.find((item) => item.id === pendingId)?.name || "this song"}?</p>
+                <button type="button" data-testid="confirm-replace" on:click={() => { const id = pendingId; pendingId = ""; void useLibrary(id) }}>Replace song</button>
+                <button type="button" data-testid="cancel-replace" on:click={() => (pendingId = "")}>Keep this song</button>
+            {/if}
+        </div>
     </section>
 {/if}
 

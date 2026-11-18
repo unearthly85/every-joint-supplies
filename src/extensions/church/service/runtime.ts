@@ -11,6 +11,7 @@ import { churchTick, onChurchAdvance } from "./session"
 
 let started = false
 let timer: ReturnType<typeof setTimeout> | null = null
+let stopGroups: (() => void) | null = null
 
 /** Put the Sunday item on the output the same way a click does. */
 export async function showLiveItem(projectId: string, index: number) {
@@ -52,7 +53,14 @@ export function watchChurchHandoff() {
         publishTestOutput()
     }
     if (testClockEnabled()) (globalThis as { __ejsTick?: () => void }).__ejsTick = tick
-    groups.update((value) => ensureChurchGroups(value))
+    // Settings load replaces `groups` after startup. Keep listening so tag gets T
+    // once, and leave a shortcut the operator already chose.
+    if (!stopGroups) {
+        stopGroups = groups.subscribe((value) => {
+            const next = ensureChurchGroups(value)
+            if (next !== value) groups.set(next)
+        })
+    }
     publishTestOutput()
     const loop = () => {
         tick()
@@ -64,6 +72,8 @@ export function watchChurchHandoff() {
 export function stopChurchHandoff() {
     if (timer) clearTimeout(timer)
     timer = null
+    stopGroups?.()
+    stopGroups = null
     started = false
 }
 

@@ -98,38 +98,79 @@ export function movePart(order: string[], from: number, to: number): string[] {
     return next
 }
 
-/** "V2" is the second verse in this Sunday's order. "C" is the first chorus. */
-export function jumpIndex(order: string[], labels: { [id: string]: string }, token: string): number | null {
-    const match = /^([A-Za-z]+)(\d+)?$/.exec(token.trim())
-    if (!match) return null
-    const key = match[1].toUpperCase()
-    const number = match[2] ? Number(match[2]) : 1
-    const hits = order.reduce<number[]>((found, id, index) => {
-        if (partShortcut(labels[id] || "") === key) found.push(index)
-        return found
-    }, [])
-    return hits[number - 1] ?? null
+/**
+ * Names come from the slides in the song, not from how many times this Sunday uses them.
+ * Verse 1 stays Verse 1 if Verse 2 is skipped. A repeated slide is "Chorus (again)".
+ */
+export function orderTitles(order: string[], labels: { [id: string]: string }, catalogIds: string[]): string[] {
+    const ids = catalogIds.length ? catalogIds : Array.from(new Set(order))
+    const byLabel = new Map<string, string[]>()
+    for (const id of ids) {
+        const label = labels[id] || "Slide"
+        const list = byLabel.get(label) || []
+        if (!list.includes(id)) list.push(id)
+        byLabel.set(label, list)
+    }
+    const base = new Map<string, string>()
+    for (const [label, list] of byLabel) {
+        const name = label ? label.charAt(0).toUpperCase() + label.slice(1) : "Slide"
+        list.forEach((id, index) => base.set(id, list.length > 1 ? `${name} ${index + 1}` : name))
+    }
+    const seen = new Set<string>()
+    return order.map((id) => {
+        const title = base.get(id) || "Slide"
+        if (seen.has(id)) return `${title} (again)`
+        seen.add(id)
+        return title
+    })
 }
 
-export function partTitle(label: string, occurrence: number, total: number): string {
-    const name = label ? label.charAt(0).toUpperCase() + label.slice(1) : "Slide"
-    if (total < 2) return name
-    return `${name} ${occurrence}`
-}
-
-/** The part Next will play after a jump to `index`. */
+/** The part Next will play after a jump to `index`. Null means the song is over. */
 export function nextAfterJump(order: string[], labels: { [id: string]: string }, index: number): { index: number; title: string } | null {
     const next = index + 1
     if (next < 0 || next >= order.length) return null
-    return { index: next, title: titleAt(order, labels, next) }
+    return { index: next, title: orderTitles(order, labels, Object.keys(labels))[next] }
 }
 
-export function titleAt(order: string[], labels: { [id: string]: string }, index: number): string {
-    const id = order[index]
-    const label = labels[id] || "Slide"
-    const same = order.filter((part) => (labels[part] || "Slide") === label)
-    const occurrence = order.slice(0, index + 1).filter((part) => (labels[part] || "Slide") === label).length
-    return partTitle(label, occurrence, same.length)
+export function nextHint(onOutput: boolean, nextTitle: string | null, firstTitle: string | null): string {
+    if (onOutput) return nextTitle ? `Next: ${nextTitle}` : "Next: end of song"
+    return firstTitle ? `Next: ${firstTitle}` : "Next: —"
+}
+
+/** "Sunday Nov 22", then "Sunday Nov 22 2" when that name is already a layout. */
+export function arrangementName(date: string, existingNames: string[]): string {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim())
+    let base = "This Sunday"
+    if (match) {
+        const stamp = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+        const day = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(stamp)
+        base = `Sunday ${day}`
+    }
+    if (!existingNames.includes(base)) return base
+    let suffix = 2
+    while (existingNames.includes(`${base} ${suffix}`)) suffix += 1
+    return `${base} ${suffix}`
+}
+
+export interface SongChoice {
+    id: string
+    name?: string
+    origin?: string
+    category?: string | null
+}
+
+/** Saved songs for the picker. Presentations and this Sunday's own shows stay out. */
+export function songChoices(library: SongChoice[], currentId: string, query: string, limit = 5): SongChoice[] {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return []
+    return library
+        .filter((show) => {
+            if (!show.name || show.id === currentId) return false
+            if (show.origin === "church-service") return false
+            if (show.category && show.category !== "song") return false
+            return show.name.toLowerCase().includes(needle)
+        })
+        .slice(0, limit)
 }
 
 /** House slides carry the words only. A group name in capitals is not part of the text. */
@@ -143,13 +184,18 @@ export function hasAllCapsHeading(text: string): boolean {
 }
 
 function slidesForOrder(existing: SlideData[], order: string[]): SlideData[] {
-    const timed = existing.find((slide) => slide.nextTimer != null || slide.actions)
-    return order.map((id, index) => {
-        const slide: SlideData = { id }
-        if (index === order.length - 1 && timed) {
-            if (timed.nextTimer != null) slide.nextTimer = timed.nextTimer
-            if (timed.actions) slide.actions = timed.actions
-        }
-        return slide
+    const copies = new Map<string, SlideData[]>()
+    for (const slide of existing) {
+        const list = copies.get(slide.id) || []
+        list.push(slide)
+        copies.set(slide.id, list)
+    }
+    const used = new Map<string, number>()
+    return order.map((id) => {
+        const list = copies.get(id) || []
+        const count = used.get(id) || 0
+        used.set(id, count + 1)
+        const source = list[count] || list[0]
+        return source ? { ...source, id } : { id }
     })
 }

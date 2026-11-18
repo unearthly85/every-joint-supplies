@@ -91,7 +91,7 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/main.ts` | Document title from `product.json`. |
 | `src/frontend/utils/language.ts` | Replaces the word `FreeShow` in translation strings with our product name. |
 | `src/frontend/components/main/Top.svelte`, `Splash.svelte`, `ProfileSelector.svelte` | Visible product name. |
-| `src/frontend/App.svelte` | Mounts the New Sunday panel and starts the Sunday handoff watch. |
+| `src/frontend/App.svelte` | Mounts the New Sunday panel and starts the Sunday handoff watch. That watch also gives the Tag group the T key after settings load, when Tag has no shortcut of its own. The key is the shared group list, so a plain FreeShow song's tag answers T as well. A shortcut someone already chose is left alone. |
 | `src/frontend/MainLayout.svelte` | Docks the booth time bar above the output preview. |
 | `src/frontend/components/show/Projects.svelte` | A compact "Sunday" button on the project list and on an open project, plus a New Sunday row next to New project. |
 | `src/frontend/components/show/Show.svelte` | Shows "This Sunday's order" on a church song. |

@@ -6,7 +6,7 @@ import { launchChurchApp } from "./electronHarness"
 const library = {
     name: "Amazing Grace",
     origin: "",
-    category: null,
+    category: "song",
     settings: { activeLayout: "default", template: null },
     timestamps: { created: 1, modified: null, used: null },
     meta: {},
@@ -40,6 +40,12 @@ test("a Sunday order overrides a saved song and the library file stays put", asy
         const folder = join(dirs.data, "Shows")
         mkdirSync(folder, { recursive: true })
         writeFileSync(join(folder, "Amazing Grace.show"), file)
+        for (let index = 1; index <= 110; index += 1) {
+            const presentation = index > 10
+            const name = presentation ? `Notes ${index}` : `Hymn ${index}`
+            const show = { ...library, name, category: presentation ? "presentation" : "song", slides: { only: part("verse", name) }, layouts: { default: { name: "Default", notes: "", slides: [{ id: "only" }] } } }
+            writeFileSync(join(folder, `${name}.show`), JSON.stringify([`extra-${index}`, show]))
+        }
     })
     const window = launched.window
     const saved = join(launched.dirs.data, "Shows", "Amazing Grace.show")
@@ -49,7 +55,15 @@ test("a Sunday order overrides a saved song and the library file stays put", asy
         await window.getByTestId("service-date").fill("2026-11-22")
         await window.getByTestId("start-sunday").click()
         await window.getByRole("button", { name: "Song", exact: true }).click()
-        await window.getByTestId("use-library-amazing-grace").click()
+        const slide = window.locator("#showArea .slide").first()
+        await expect(slide).toBeVisible()
+        await window.getByTestId("song-search").fill("Notes")
+        await expect(window.getByTestId("song-results").locator("button")).toHaveCount(0)
+        expect((await slide.boundingBox())!.y).toBeLessThan(700)
+        await window.getByTestId("song-search").fill("Amazing")
+        await expect(window.getByTestId("song-results").locator("button")).toHaveCount(1)
+        await window.getByTestId("song-result-amazing-grace").click()
+        await window.getByTestId("confirm-replace").click()
         await expect(window.getByTestId("order-0")).toContainText("Verse 1")
         await expect(window.getByTestId("order-1")).toContainText("Chorus")
         await window.getByTestId("add-tag").click()
@@ -57,6 +71,15 @@ test("a Sunday order overrides a saved song and the library file stays put", asy
 
         await window.locator("#show_sunday-2026-11-22-102700--song").getByRole("button", { name: "Amazing Grace", exact: true }).dblclick()
         await expect.poll(() => window.locator("#previewArea").innerText()).toContain("First verse")
+        await window.locator("#previewArea").click()
+        await window.keyboard.press("t")
+        await expect.poll(() => window.locator("#previewArea").innerText()).toContain("The tag")
+        await expect(window.getByTestId("next-part")).toHaveText("Next: end of song")
+        await window.keyboard.press("b")
+        await expect.poll(() => window.locator("#previewArea").innerText()).toContain("The bridge")
+        await window.keyboard.press("t")
+        await expect.poll(() => window.locator("#previewArea").innerText()).toContain("The tag")
+        await expect(window.getByTestId("next-part")).toHaveText("Next: end of song")
         await window.keyboard.press("c")
         await expect.poll(() => window.locator("#previewArea").innerText()).toContain("Sing the chorus")
         await expect(window.getByTestId("next-part")).toHaveText("Next: Verse 2")

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { Show } from "../../../types/Show"
 import { faithCovenantSunday, toStored } from "./model"
-import { applyServiceSequence, appendPart, ensureChurchGroups, groupBinding, hasAllCapsHeading, houseSlideText, jumpIndex, nextAfterJump, partShortcut, readLayoutOrder, saveAsNewArrangement, skipPart } from "./arrangement"
+import { appendPart, applyServiceSequence, arrangementName, ensureChurchGroups, groupBinding, layoutForOrder, nextAfterJump, nextHint, orderTitles, partShortcut, readLayoutOrder, saveAsNewArrangement, skipPart, songChoices } from "./arrangement"
 
 function librarySong(): Show {
     const slide = (group: string, text: string) => ({
@@ -57,24 +57,31 @@ describe("this Sunday's song order", () => {
 
     it("continues with the next part after a jump", () => {
         const labels = { "verse-1": "verse", chorus: "chorus", "verse-2": "verse", bridge: "bridge", tag: "tag" }
-        const bridge = jumpIndex(ORDER, labels, "B")
-        expect(bridge).toBe(4)
-        expect(nextAfterJump(ORDER, labels, bridge || 0)).toEqual({ index: 5, title: "Chorus 3" })
-        expect(jumpIndex(ORDER, labels, "V2")).toBe(2)
-        expect(jumpIndex(ORDER, labels, "C")).toBe(1)
-        expect(jumpIndex(ORDER, labels, "T")).toBe(6)
+        expect(nextAfterJump(ORDER, labels, 4)).toEqual({ index: 5, title: "Chorus (again)" })
+        expect(nextAfterJump(ORDER, labels, ORDER.length - 1)).toBeNull()
+        expect(nextHint(true, null, "Verse 1")).toBe("Next: end of song")
+        expect(nextHint(false, null, "Verse 1")).toBe("Next: Verse 1")
     })
 
-    it("does not put an all-caps group heading on a house slide", () => {
+    it("keeps verse numbers on the slide when a later verse is skipped", () => {
+        const labels = { "verse-1": "verse", chorus: "chorus", "verse-2": "verse", bridge: "bridge", tag: "tag" }
+        const titles = orderTitles(ORDER, labels, Object.keys(labels))
+        expect(titles[0]).toBe("Verse 1")
+        expect(titles[1]).toBe("Chorus")
+        expect(titles[2]).toBe("Verse 2")
+        expect(titles[3]).toBe("Chorus (again)")
+        const skipped = skipPart(ORDER, 2)
+        expect(orderTitles(skipped, labels, Object.keys(labels))[0]).toBe("Verse 1")
+    })
+
+    it("writes house slides with the hidden group and the words only", () => {
         const stored = toStored(faithCovenantSunday("2026-11-22"))
-        const welcome = stored.shows[`${stored.projectId}--welcome`]
-        const announcements = stored.shows[`${stored.projectId}--announcements`]
-        for (const show of [welcome, announcements]) {
-            for (const slide of Object.values(show.slides)) {
-                expect(hasAllCapsHeading(houseSlideText(slide))).toBe(false)
-                expect(slide.group).toBe(".")
-            }
-        }
+        const welcome = stored.shows[`${stored.projectId}--welcome`].slides["welcome-slide"]
+        const announcements = stored.shows[`${stored.projectId}--announcements`].slides["announce-1"]
+        expect(welcome.group).toBe(".")
+        expect(announcements.group).toBe(".")
+        expect(welcome.items?.[0].lines?.map((line) => line.text?.map((part) => part.value).join(""))).toEqual(["Welcome"])
+        expect(announcements.items?.[0].lines?.map((line) => line.text?.map((part) => part.value).join(""))).toEqual(["Announcements"])
     })
 })
 
@@ -95,6 +102,37 @@ describe("FreeShow group and layout wrappers", () => {
         expect(next.tag.shortcut).toBe("T")
         expect(ensureChurchGroups(next)).toBe(next)
         expect(groups.tag.shortcut).toBeUndefined()
+        expect(ensureChurchGroups({ tag: { name: "tag", shortcut: "X" } }).tag.shortcut).toBe("X")
+    })
+
+    it("keeps a layout slide's background and other settings when the order changes", () => {
+        const existing = [
+            { id: "verse-1", disabled: true, background: "bg1", color: "#111" },
+            { id: "chorus", nextTimer: 12, actions: { nextAfterMedia: true }, background: "bg2", overlays: ["amen"] }
+        ]
+        const next = layoutForOrder(existing, ["chorus", "verse-1", "chorus"])
+        expect(next[0]).toEqual(existing[1])
+        expect(next[1]).toEqual(existing[0])
+        expect(next[2]).toEqual({ ...existing[1], id: "chorus" })
+    })
+
+    it("names a saved arrangement by the service date and does not overwrite", () => {
+        expect(arrangementName("2026-11-22", [])).toBe("Sunday Nov 22")
+        expect(arrangementName("2026-11-22", ["Sunday Nov 22"])).toBe("Sunday Nov 22 2")
+        expect(arrangementName("2026-11-22", ["Sunday Nov 22", "Sunday Nov 22 2"])).toBe("Sunday Nov 22 3")
+    })
+
+    it("searches songs only and returns a handful", () => {
+        const library = [
+            { id: "amazing-grace", name: "Amazing Grace", category: "song" },
+            { id: "sunday-song", name: "Amazing Sunday", origin: "church-service", category: "song" },
+            { id: "deck", name: "Amazing Slides", category: "presentation" },
+            ...Array.from({ length: 100 }, (_, index) => ({ id: `notes-${index}`, name: `Notes ${index}`, category: "presentation" }))
+        ]
+        expect(songChoices(library, "current", "")).toEqual([])
+        expect(songChoices(library, "current", "Amazing")).toEqual([{ id: "amazing-grace", name: "Amazing Grace", category: "song" }])
+        const many = Array.from({ length: 20 }, (_, index) => ({ id: `hymn-${index}`, name: `Hymn ${index}`, category: "song" }))
+        expect(songChoices(many, "current", "Hymn")).toHaveLength(5)
     })
 
     it("reads and stores an arrangement as layout slide ids", () => {
