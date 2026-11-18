@@ -15,6 +15,7 @@ export interface Step {
     untilTime: string | null
     durationSeconds: number | null
     onMediaEnd: boolean
+    mediaPath: string | null
 }
 
 export interface Plan {
@@ -37,7 +38,18 @@ export interface Arm {
 
 export function countdownInstant(plan: Pick<Plan, "timeZone" | "date" | "timingMode" | "startTime" | "countdownDurationSeconds">, edge: "starts" | "ends"): Date {
     const window = countdownWindow(plan.timingMode, plan.startTime, plan.countdownDurationSeconds)
-    return zonedDateTime(plan.timeZone, plan.date, window[edge])
+    const clock = window[edge]
+    return zonedDateTime(plan.timeZone, countdownDate(plan.date, plan.startTime, clock), clock)
+}
+
+/** A countdown that crosses midnight belongs on the previous or next local date, not the service date twice. */
+export function countdownDate(serviceDate: string, startTime: string, clock: string): string {
+    const start = clockSeconds(startTime)
+    const at = clockSeconds(clock)
+    const halfDay = 12 * 3600
+    if (at > start && at - start > halfDay) return shiftDate(serviceDate, -1)
+    if (start > at && start - at > halfDay) return shiftDate(serviceDate, 1)
+    return serviceDate
 }
 
 export function nextItemIndex(plan: Plan, index: number): number {
@@ -48,13 +60,21 @@ export function nextItemIndex(plan: Plan, index: number): number {
 export function armStep(plan: Plan, index: number, enteredAt: Date, generation: number): Arm {
     const step = plan.steps.find((item) => item.index === index)
     const due = step ? dueAtMs(plan, step, enteredAt) : null
+    const alreadyPassed = due != null && due <= enteredAt.getTime()
     return {
         index,
         enteredAtMs: enteredAt.getTime(),
         generation,
-        dueAtMs: due,
-        watchMedia: !!step && step.autoAdvance && step.onMediaEnd
+        dueAtMs: alreadyPassed ? null : due,
+        watchMedia: !!step && step.autoAdvance && step.onMediaEnd && !alreadyPassed
     }
+}
+
+export function mediaMatches(itemPath: string | null, endedId: string): boolean {
+    if (!itemPath || !endedId) return false
+    if (itemPath === endedId) return true
+    const base = (value: string) => value.split(/[/\\]/).pop() || value
+    return itemPath.endsWith(endedId) || endedId.endsWith(itemPath) || base(itemPath) === base(endedId)
 }
 
 /** The clock for this step has arrived. A newer generation means a manual advance already cancelled it. */
@@ -85,7 +105,8 @@ export function planFromProject(project: Project & { church?: { date: string; ad
             autoAdvance,
             untilTime: timeframe?.untilTime || null,
             durationSeconds: timeframe?.durationSeconds ?? null,
-            onMediaEnd: timeframe?.onMediaEnd === true
+            onMediaEnd: timeframe?.onMediaEnd === true,
+            mediaPath: item.mediaPath || (ref.type === "video" || ref.type === "image" || ref.type === "audio" ? ref.id : null)
         })
     })
     return {
@@ -105,6 +126,18 @@ export function formatRemaining(ms: number): string {
     const minutes = Math.floor(total / 60)
     const seconds = total % 60
     return `${minutes}:${String(seconds).padStart(2, "0")}`
+}
+
+function clockSeconds(clock: string): number {
+    const [hour, minute, second] = clock.split(":").map(Number)
+    return (hour || 0) * 3600 + (minute || 0) * 60 + (second || 0)
+}
+
+function shiftDate(date: string, days: number): string {
+    const [year, month, day] = date.split("-").map(Number)
+    const value = new Date(Date.UTC(year, month - 1, day))
+    value.setUTCDate(value.getUTCDate() + days)
+    return value.toISOString().slice(0, 10)
 }
 
 function dueAtMs(plan: Plan, step: Step, enteredAt: Date): number | null {

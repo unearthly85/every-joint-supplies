@@ -13,20 +13,14 @@
 
 <style>
     aside {
-        position: fixed;
-        left: 16px;
-        bottom: 16px;
-        z-index: 20;
         display: flex;
         flex-wrap: wrap;
-        gap: 8px 20px;
-        max-width: calc(100% - 32px);
-        padding: 10px 14px;
+        gap: 8px 16px;
+        padding: 8px 12px;
         background: var(--primary);
         color: var(--text);
-        border: 2px solid var(--primary-lighter);
-        border-radius: 10px;
-        font-size: 18px;
+        border-bottom: 1px solid var(--primary-lighter);
+        font-size: 16px;
     }
 
     p {

@@ -15,7 +15,7 @@ export default defineConfig({
             provider: "v8",
             reporter: ["text", "text-summary"],
             include: ["src/extensions/church/**/*.ts"],
-            exclude: ["**/*.test.ts", "src/extensions/church/service/runtime.ts"],
+            exclude: ["**/*.test.ts"],
             thresholds: {
                 lines: 90,
                 functions: 90,

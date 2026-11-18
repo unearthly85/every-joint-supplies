@@ -719,7 +719,7 @@ export async function checkNextAfterMedia(endedId: string, type: "media" | "audi
         didAdvance = true
     }
 
-    if (!didAdvance && churchOnMediaEnded()) return true
+    if (!didAdvance && churchOnMediaEnded(endedId)) return true
     return didAdvance
 }
 

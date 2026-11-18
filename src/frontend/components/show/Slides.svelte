@@ -11,6 +11,7 @@
     import { getActiveOutputs, refreshOut, setOutput } from "../helpers/output"
     import { getCachedShow } from "../helpers/show"
     import { checkActionTrigger, getFewestOutputLines, getFewestOutputLinesReveal, getItemWithMostLines, updateOut } from "../helpers/showActions"
+    import { churchNoteManual } from "../../../extensions/church/service/session"
     import { _show } from "../helpers/shows"
     import T from "../helpers/T.svelte"
     import MaterialButton from "../inputs/MaterialButton.svelte"
@@ -96,6 +97,7 @@
     function slideClick(e: any, index: number) {
         // TODO: duplicate function of "preview:126 - updateOut"
         if ($outLocked || e.ctrlKey || e.metaKey || e.shiftKey) return
+        churchNoteManual()
 
         customActionActivation("slide_click")
 

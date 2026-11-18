@@ -17,6 +17,7 @@
     import { clearSlide } from "../output/clear"
     import { getTextSnippet, highlightText } from "../quicksearch/searchHighlight"
     import { projectItemLabel } from "../../../extensions/church/service/model"
+    import { churchNoteManual } from "../../../extensions/church/service/session"
     import HiddenInput from "./HiddenInput.svelte"
     import MaterialButton from "./MaterialButton.svelte"
 
@@ -149,6 +150,7 @@
 
     async function doubleClick(e: ClickEvent) {
         if (type === "show_placeholder") return
+        churchNoteManual()
         if (editActive || $outLocked || e.detail.target.closest("input")) return
 
         let outputId: string = getActiveOutputs($outputs, false, true, true)[0]

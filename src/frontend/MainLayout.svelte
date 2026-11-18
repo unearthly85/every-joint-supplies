@@ -8,6 +8,7 @@
     import Tipbar from "./components/main/Tipbar.svelte"
     import Top from "./components/main/Top.svelte"
     import Preview from "./components/output/preview/Preview.svelte"
+    import BoothStatus from "../extensions/church/BoothStatus.svelte"
     import SettingsTabs from "./components/settings/SettingsTabs.svelte"
     import Projects from "./components/show/Projects.svelte"
     import Show from "./components/show/Show.svelte"
@@ -75,6 +76,7 @@
 
         <Resizeable id="rightPanel" let:width side="right">
             <div class="right" class:row={width > DEFAULT_WIDTH * 1.8}>
+                <BoothStatus />
                 <Preview />
                 {#if page === "show"}
                     {#if $activeShow && ($activeShow.type === "show" || $activeShow.type === undefined) && !$focusMode}

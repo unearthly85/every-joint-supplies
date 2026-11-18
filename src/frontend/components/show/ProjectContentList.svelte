@@ -159,6 +159,17 @@
     //     activePopup.set("show")
     //     openDrawer("shows")
     // }
+    function setAutoAdvance(itemIndex: number | undefined, enabled: boolean) {
+        const projectId = $activeProject
+        if (!projectId || itemIndex == null) return
+        projects.update((all) => {
+            const ref = all[projectId]?.shows?.[itemIndex]
+            if (!ref?.data?.church) return all
+            ref.data.church.autoAdvance = enabled
+            return all
+        })
+    }
+
     function openSearch(page: string) {
         openDrawer(page)
         triggerFunction("drawer_search")
@@ -342,7 +353,15 @@
                                             {/if}
                                         </MaterialButton>
                                     {:else}
-                                        <ShowButton id={show.id} {show} {index} class={projectReadOnly ? "" : `context #${isProviderProject ? `provider_item${providerLink ? "" : "_unlinked"}` : `project_${getContextMenuId(show.type)}`}`} style={borderRadiusStyle} icon isProject />
+                                        <div class="projectItemRow">
+                                            <ShowButton id={show.id} {show} {index} class={projectReadOnly ? "" : `context #${isProviderProject ? `provider_item${providerLink ? "" : "_unlinked"}` : `project_${getContextMenuId(show.type)}`}`} style={borderRadiusStyle} icon isProject />
+                                            {#if show.data?.church}
+                                                <label class="autoAdvance" data-testid={"auto-advance-" + (show.data.church.itemId || show.id)}>
+                                                    <input type="checkbox" checked={show.data.church.autoAdvance !== false} on:click|stopPropagation on:change={(e) => setAutoAdvance(index, e.currentTarget.checked)} />
+                                                    Auto-advance
+                                                </label>
+                                            {/if}
+                                        </div>
                                     {/if}
                                 </SelectElem>
                             {/if}
@@ -689,5 +708,19 @@
         flex-direction: column;
 
         background-color: var(--primary-darker);
+    }
+
+    .projectItemRow {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .autoAdvance {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 12px 6px;
+        font-size: 0.85em;
+        color: var(--text);
     }
 </style>

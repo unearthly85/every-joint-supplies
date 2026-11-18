@@ -56,6 +56,31 @@ describe("section handoff", () => {
         expect(armStep(custom, held.index, at(plan, "10:00:00"), 1).dueAtMs).toBeNull()
     })
 
+    it("does not fire a deadline that had already passed when the step went live", () => {
+        const plan = planFor("A")
+        const welcome = plan.steps[0]
+        const late = at(plan, "10:40:00")
+        const armed = armStep(plan, welcome.index, late, 1)
+        expect(armed.dueAtMs).toBeNull()
+        expect(armed.watchMedia).toBe(false)
+        expect(clockFires(armed, late.getTime(), armed.generation)).toBe(false)
+    })
+
+    it("puts a mode B countdown that crosses midnight on the previous date", () => {
+        const service = faithCovenantSunday("2026-11-22", { timingMode: "B", startTime: "00:02:00", countdownDurationSeconds: 300 })
+        const stored = toStored(service)
+        const plan = planFromProject({ ...stored.project, church: stored.project.church! }, ZONE)
+        if (!plan) throw new Error("expected a plan")
+        const start = countdownInstant(plan, "starts")
+        const end = countdownInstant(plan, "ends")
+        expect(end.getTime() - start.getTime()).toBe(300000)
+        const format = (value: Date) => new Intl.DateTimeFormat("en-US", { timeZone: ZONE, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(value)
+        expect(format(start)).toContain("11/21")
+        expect(format(start)).toContain("23:57")
+        expect(format(end)).toContain("11/22")
+        expect(format(end)).toContain("00:02")
+    })
+
     it("a manual advance cancels the handoff that was waiting on the clock", () => {
         const plan = planFor("A")
         const welcome = plan.steps[0]

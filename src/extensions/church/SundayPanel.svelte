@@ -66,7 +66,14 @@
     function pickCountdownVideo(event: Event) {
         const file = (event.currentTarget as HTMLInputElement).files?.[0] as (File & { path?: string }) | undefined
         if (!file) return
-        countdownMediaPath = file.path || file.name
+        const api = (window as unknown as { api?: { showFilePath?: (value: File) => string } }).api
+        let picked = ""
+        try {
+            picked = api?.showFilePath?.(file) || ""
+        } catch {
+            picked = ""
+        }
+        countdownMediaPath = picked || file.name
         countdownVideoLabel = file.name
         const url = URL.createObjectURL(file)
         const video = document.createElement("video")

@@ -5,10 +5,16 @@
 
 let override: (() => Date) | null = null
 
+export function testClockEnabled(): boolean {
+    return (globalThis as { __ejsTestClock?: boolean }).__ejsTestClock === true
+}
+
 export function churchNow(): Date {
-    const injected = (globalThis as { __ejsNow?: () => Date }).__ejsNow
-    if (typeof injected === "function") return injected()
     if (override) return override()
+    if (testClockEnabled()) {
+        const injected = (globalThis as { __ejsNow?: () => Date }).__ejsNow
+        if (typeof injected === "function") return injected()
+    }
     return new Date()
 }
 
