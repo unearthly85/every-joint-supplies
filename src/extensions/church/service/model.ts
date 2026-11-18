@@ -1,0 +1,510 @@
+import type { Project, ProjectShowRef } from "../../../types/Projects"
+import type { Show, Slide, SlideData } from "../../../types/Show"
+
+/**
+ * A Sunday service stored as a FreeShow project.
+ *
+ * Sections are project entries of type "section", in array order. Items are the
+ * entries that follow a section until the next one. Songs are shows: each part
+ * is a slide whose group is verse, chorus, bridge, or tag, and the arrangement
+ * (including repeats) is that show's layout slide list. Our own fields live in
+ * `data.church` and on `project.church`, which the project file already saves.
+ * Nothing here runs a timer. The next task owns that.
+ */
+
+export const SONG_PART_LABELS = ["verse", "chorus", "bridge", "tag"] as const
+export type SongPartLabel = (typeof SONG_PART_LABELS)[number]
+
+export const SECTION_KINDS = ["pre_service_loop", "warmup", "service", "post_service", "custom"] as const
+export type SectionKind = (typeof SECTION_KINDS)[number]
+
+export const ITEM_TYPES = ["song", "scripture", "sermon", "announcement", "video"] as const
+export type ItemType = (typeof ITEM_TYPES)[number]
+
+export type TimingMode = "A" | "B"
+
+export const CHURCH_ORIGIN = "church-service"
+export const CHURCH_VERSION = 1
+
+/** Faith Covenant's usual Sunday. Mode A: the countdown begins at the start time. */
+export const FAITH_COVENANT_SUNDAY = {
+    advertisedTime: "10:30",
+    startTime: "10:27",
+    countdownDurationMs: 5 * 60 * 1000,
+    timingMode: "A" as TimingMode
+}
+
+export interface Timeframe {
+    durationMs?: number
+    untilTime?: string
+    onMediaEnd?: boolean
+}
+
+export interface SongPart {
+    id: string
+    label: SongPartLabel
+    text: string
+}
+
+export interface TextPage {
+    id: string
+    text: string
+}
+
+export interface ServiceItem {
+    id: string
+    type: ItemType
+    name: string
+    timeframe?: Timeframe
+    /** Stored explicitly. When omitted, on if a timeframe is set and off otherwise. */
+    autoAdvance?: boolean
+    parts?: SongPart[]
+    /** Part ids. The same id may appear more than once (an ad-hoc repeat). */
+    arrangement?: string[]
+    scripture?: string
+    slides?: TextPage[]
+    mediaPath?: string
+}
+
+export interface ServiceSection {
+    id: string
+    kind: SectionKind
+    name: string
+    items: ServiceItem[]
+}
+
+export interface ChurchService {
+    id: string
+    name: string
+    date: string
+    advertisedTime: string
+    startTime: string
+    timingMode: TimingMode
+    countdownDurationMs: number
+    sections: ServiceSection[]
+}
+
+export interface ChurchBlob {
+    version: typeof CHURCH_VERSION
+    date: string
+    advertisedTime: string
+    startTime: string
+    timingMode: TimingMode
+    countdownDurationMs: number
+}
+
+interface SectionBlob {
+    kind: SectionKind
+    service: ChurchBlob
+}
+
+interface ItemBlob {
+    itemId: string
+    itemType: ItemType
+    timeframe?: Timeframe
+    autoAdvance: boolean
+    scripture?: string
+    slides?: TextPage[]
+    mediaPath?: string
+    parts?: SongPart[]
+    arrangement?: string[]
+}
+
+export interface StoredProject extends Project {
+    church?: ChurchBlob
+}
+
+export interface StoredService {
+    projectId: string
+    project: StoredProject
+    shows: { [id: string]: Show }
+}
+
+export function parseClock(value: string): number {
+    const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(value.trim())
+    if (!match) throw new Error("Enter a time like 10:30")
+    const hours = Number(match[1])
+    const minutes = Number(match[2])
+    if (hours > 23 || minutes > 59) throw new Error("Enter a time like 10:30")
+    return hours * 60 + minutes
+}
+
+export function formatClock(minutesPastMidnight: number): string {
+    const day = 24 * 60
+    const wrapped = ((minutesPastMidnight % day) + day) % day
+    const hours = Math.floor(wrapped / 60)
+    const minutes = wrapped % 60
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+}
+
+/**
+ * Mode A (default): the pre-service loop hands off at the start time and the
+ * countdown begins then. Mode B: the countdown ends at the start time, so it
+ * begins one countdown length earlier.
+ */
+export function countdownWindow(mode: TimingMode, startTime: string, durationMs: number): { starts: string; ends: string } {
+    const start = parseClock(startTime)
+    const minutes = Math.round(durationMs / 60_000)
+    if (mode === "B") return { starts: formatClock(start - minutes), ends: formatClock(start) }
+    return { starts: formatClock(start), ends: formatClock(start + minutes) }
+}
+
+export function countdownLine(service: Pick<ChurchService, "timingMode" | "startTime" | "countdownDurationMs">): string {
+    const window = countdownWindow(service.timingMode, service.startTime, service.countdownDurationMs)
+    return `Countdown starts ${window.starts}, ends ${window.ends}`
+}
+
+export function timeframeIsSet(timeframe: Timeframe | undefined): boolean {
+    if (!timeframe) return false
+    if (timeframe.durationMs != null) return true
+    if (timeframe.untilTime) return true
+    return timeframe.onMediaEnd === true
+}
+
+/** Auto-advance is on when a timeframe is set, unless the item says otherwise. */
+export function autoAdvanceEnabled(item: Pick<ServiceItem, "autoAdvance" | "timeframe">): boolean {
+    if (typeof item.autoAdvance === "boolean") return item.autoAdvance
+    return timeframeIsSet(item.timeframe)
+}
+
+export interface FaithCovenantOptions {
+    advertisedTime?: string
+    startTime?: string
+    timingMode?: TimingMode
+    countdownDurationMs?: number
+    name?: string
+}
+
+export function faithCovenantSunday(date: string, options: FaithCovenantOptions = {}): ChurchService {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Enter a service date")
+    const advertisedTime = options.advertisedTime ?? FAITH_COVENANT_SUNDAY.advertisedTime
+    const startTime = options.startTime ?? FAITH_COVENANT_SUNDAY.startTime
+    const timingMode = options.timingMode ?? FAITH_COVENANT_SUNDAY.timingMode
+    const countdownDurationMs = options.countdownDurationMs ?? FAITH_COVENANT_SUNDAY.countdownDurationMs
+    if (timingMode !== "A" && timingMode !== "B") throw new Error("Timing mode must be A or B")
+    if (countdownDurationMs < 0) throw new Error("Countdown length cannot be negative")
+    parseClock(advertisedTime)
+    parseClock(startTime)
+
+    const countdown: Timeframe = { durationMs: countdownDurationMs, onMediaEnd: true }
+    const service: ChurchService = {
+        id: `sunday-${date}-${startTime.replace(":", "")}`,
+        name: options.name ?? `Sunday ${date}`,
+        date,
+        advertisedTime,
+        startTime,
+        timingMode,
+        countdownDurationMs,
+        sections: [
+            {
+                id: "pre-service",
+                kind: "pre_service_loop",
+                name: "Pre-service",
+                items: [{ id: "welcome", type: "announcement", name: "Welcome slides", slides: [{ id: "welcome-slide", text: "Welcome" }] }]
+            },
+            {
+                id: "countdown",
+                kind: "warmup",
+                name: "Countdown",
+                items: [{ id: "countdown-video", type: "video", name: "Countdown video", mediaPath: "media/countdown.mp4", timeframe: countdown }]
+            },
+            {
+                id: "gathered",
+                kind: "service",
+                name: "Service",
+                items: [
+                    { id: "announcements", type: "announcement", name: "Announcements", slides: [{ id: "announce-1", text: "Announcements" }] },
+                    { id: "scripture", type: "scripture", name: "Scripture", scripture: "Psalm 100", slides: [{ id: "psalm-100", text: "Psalm 100" }] },
+                    {
+                        id: "song",
+                        type: "song",
+                        name: "Song",
+                        parts: [
+                            { id: "verse-1", label: "verse", text: "Verse" },
+                            { id: "chorus", label: "chorus", text: "Chorus" },
+                            { id: "bridge", label: "bridge", text: "Bridge" },
+                            { id: "tag", label: "tag", text: "Tag" }
+                        ],
+                        arrangement: ["verse-1", "chorus", "verse-1", "chorus", "bridge", "chorus", "tag"]
+                    }
+                ]
+            }
+        ]
+    }
+    return service
+}
+
+export function toStored(service: ChurchService): StoredService {
+    const blob = churchBlob(service)
+    const created = Date.parse(`${service.date}T12:00:00Z`)
+    const shows: { [id: string]: Show } = {}
+    const refs: ProjectShowRef[] = []
+
+    for (const section of service.sections) {
+        refs.push({
+            id: section.id,
+            type: "section",
+            name: section.name,
+            notes: "",
+            loop: section.kind === "pre_service_loop",
+            data: { church: { kind: section.kind, service: blob } satisfies SectionBlob }
+        })
+        for (const item of section.items) {
+            const built = buildShow(service.id, item, created)
+            if (built) shows[built.id] = built.show
+            refs.push(itemRef(service.id, item, built?.id))
+        }
+    }
+
+    const project: StoredProject = {
+        name: service.name,
+        created: Number.isNaN(created) ? 0 : created,
+        parent: "/",
+        origin: CHURCH_ORIGIN,
+        shows: refs,
+        church: blob
+    }
+    return { projectId: service.id, project, shows }
+}
+
+export function fromStored(stored: StoredService): ChurchService {
+    const blob = readBlob(stored.project)
+    const sections: ServiceSection[] = []
+    let current: ServiceSection | null = null
+
+    for (const ref of stored.project.shows || []) {
+        if (ref.type === "section") {
+            current = {
+                id: ref.id,
+                kind: sectionKind(ref),
+                name: ref.name || "Section",
+                items: []
+            }
+            sections.push(current)
+            continue
+        }
+        if (!current) {
+            current = { id: "custom", kind: "custom", name: "Service", items: [] }
+            sections.push(current)
+        }
+        current.items.push(readItem(stored, ref))
+    }
+
+    return {
+        id: stored.projectId,
+        name: stored.project.name,
+        date: blob.date,
+        advertisedTime: blob.advertisedTime,
+        startTime: blob.startTime,
+        timingMode: blob.timingMode === "B" ? "B" : "A",
+        countdownDurationMs: blob.countdownDurationMs,
+        sections
+    }
+}
+
+/**
+ * FreeShow's save removes show settings, timestamps, slide.id, and the project
+ * ref's layout before writing. A Sunday still has to come back intact.
+ */
+export function simulateFreeShowSave(stored: StoredService): StoredService {
+    const copy = JSON.parse(JSON.stringify(stored)) as StoredService
+    for (const show of Object.values(copy.shows)) {
+        delete (show as { settings?: unknown }).settings
+        delete (show as { timestamps?: unknown }).timestamps
+        for (const slide of Object.values(show.slides || {})) delete slide.id
+    }
+    for (const ref of copy.project.shows || []) delete ref.layout
+    return copy
+}
+
+function churchBlob(service: ChurchService): ChurchBlob {
+    return {
+        version: CHURCH_VERSION,
+        date: service.date,
+        advertisedTime: service.advertisedTime,
+        startTime: service.startTime,
+        timingMode: service.timingMode,
+        countdownDurationMs: service.countdownDurationMs
+    }
+}
+
+function itemRef(serviceId: string, item: ServiceItem, showId: string | undefined): ProjectShowRef {
+    const autoAdvance = autoAdvanceEnabled(item)
+    const blob: ItemBlob = {
+        itemId: item.id,
+        itemType: item.type,
+        autoAdvance,
+        timeframe: item.timeframe,
+        scripture: item.scripture,
+        slides: item.slides,
+        mediaPath: item.mediaPath,
+        parts: item.parts,
+        arrangement: item.arrangement
+    }
+    if (item.type === "video") {
+        return { id: item.mediaPath || item.id, type: "video", name: item.name, data: { church: blob } }
+    }
+    return { id: showId || `${serviceId}--${item.id}`, type: "show", name: item.name, data: { church: blob } }
+}
+
+function buildShow(serviceId: string, item: ServiceItem, created: number): { id: string; show: Show } | null {
+    if (item.type === "video") return null
+    const showId = `${serviceId}--${item.id}`
+    const slides: Show["slides"] = {}
+    const layoutSlides: SlideData[] = []
+
+    if (item.type === "song") {
+        for (const part of item.parts || []) slides[part.id] = textSlide(part.label, part.text)
+        const order = item.arrangement?.length ? item.arrangement : (item.parts || []).map((part) => part.id)
+        for (const partId of order) layoutSlides.push({ id: partId })
+    } else {
+        const pages = textPages(item)
+        for (const page of pages) slides[page.id] = textSlide(null, page.text)
+        for (const page of pages) layoutSlides.push({ id: page.id })
+    }
+
+    const last = layoutSlides[layoutSlides.length - 1]
+    if (last && item.timeframe?.durationMs != null) last.nextTimer = Math.round(item.timeframe.durationMs / 1000)
+    if (last && item.timeframe?.onMediaEnd) last.actions = { nextAfterMedia: true }
+
+    const show: Show = {
+        name: item.name,
+        origin: CHURCH_ORIGIN,
+        category: null,
+        settings: { activeLayout: "arrangement", template: null },
+        timestamps: { created, modified: null, used: null },
+        meta: {},
+        slides,
+        layouts: { arrangement: { name: "Arrangement", notes: "", slides: layoutSlides } },
+        media: {}
+    }
+    if (item.type === "scripture") show.reference = { type: "scripture", data: { passage: item.scripture || item.name } }
+    return { id: showId, show }
+}
+
+function textPages(item: ServiceItem): TextPage[] {
+    if (item.slides?.length) return item.slides
+    if (item.scripture) return [{ id: "scripture", text: item.scripture }]
+    return [{ id: "slide-1", text: item.name }]
+}
+
+function textSlide(group: string | null, text: string): Slide {
+    return {
+        group,
+        color: null,
+        settings: {},
+        notes: "",
+        items: [{ type: "text", style: "", lines: [{ align: "", text: [{ value: text, style: "" }] }] }]
+    }
+}
+
+function readBlob(project: StoredProject): ChurchBlob {
+    if (project.church?.version === CHURCH_VERSION) return project.church
+    for (const ref of project.shows || []) {
+        const service = (ref.data?.church as SectionBlob | undefined)?.service
+        if (service?.version === CHURCH_VERSION) return service
+    }
+    throw new Error("This project is not a Sunday service")
+}
+
+function sectionKind(ref: ProjectShowRef): SectionKind {
+    const kind = (ref.data?.church as SectionBlob | undefined)?.kind
+    if (kind && (SECTION_KINDS as readonly string[]).includes(kind)) return kind
+    return "custom"
+}
+
+function readItem(stored: StoredService, ref: ProjectShowRef): ServiceItem {
+    const blob = ref.data?.church as ItemBlob | undefined
+    const show = stored.shows[ref.id]
+    const type = blob?.itemType && (ITEM_TYPES as readonly string[]).includes(blob.itemType) ? blob.itemType : inferType(ref, show)
+    const timeframe = readTimeframe(blob, show)
+    const item: ServiceItem = {
+        id: itemId(ref, show, blob),
+        type,
+        name: ref.name || show?.name || "Item",
+        autoAdvance: typeof blob?.autoAdvance === "boolean" ? blob.autoAdvance : autoAdvanceEnabled({ timeframe })
+    }
+    if (timeframe) item.timeframe = timeframe
+    if (type === "video") {
+        item.mediaPath = blob?.mediaPath || ref.id
+        return item
+    }
+    if (type === "song") {
+        const song = readSong(show, blob)
+        item.parts = song.parts
+        item.arrangement = song.arrangement
+        return item
+    }
+    if (type === "scripture") item.scripture = blob?.scripture || show?.reference?.data?.passage || slideText(firstSlide(show))
+    item.slides = readPages(show, blob)
+    return item
+}
+
+function itemId(ref: ProjectShowRef, show: Show | undefined, blob: ItemBlob | undefined): string {
+    if (blob?.itemId) return blob.itemId
+    if (show?.name && ref.id.includes("--")) return ref.id.slice(ref.id.lastIndexOf("--") + 2)
+    if (ref.type === "video" || ref.type === "image" || ref.type === "audio") return ref.id.split("/").pop() || ref.id
+    return ref.id
+}
+
+function inferType(ref: ProjectShowRef, show: Show | undefined): ItemType {
+    if (ref.type === "video" || ref.type === "image" || ref.type === "audio") return "video"
+    if (show?.reference?.type === "scripture") return "scripture"
+    const groups = Object.values(show?.slides || {}).map((slide) => normalizeLabel(slide.group))
+    if (groups.some((label) => label !== null)) return "song"
+    return "announcement"
+}
+
+function readTimeframe(blob: ItemBlob | undefined, show: Show | undefined): Timeframe | undefined {
+    if (blob?.timeframe && timeframeIsSet(blob.timeframe)) return blob.timeframe
+    const last = lastLayoutSlide(show)
+    const timeframe: Timeframe = {}
+    if (last?.nextTimer != null) timeframe.durationMs = last.nextTimer * 1000
+    if (last?.actions?.nextAfterMedia) timeframe.onMediaEnd = true
+    return timeframeIsSet(timeframe) ? timeframe : undefined
+}
+
+function readSong(show: Show | undefined, blob: ItemBlob | undefined): { parts: SongPart[]; arrangement: string[] } {
+    const layout = show?.layouts?.arrangement || (show ? Object.values(show.layouts || {})[0] : undefined)
+    const arrangement = layout?.slides?.map((slide) => slide.id) || blob?.arrangement || []
+    if (!show?.slides) return { parts: blob?.parts || [], arrangement }
+    const parts: SongPart[] = []
+    const seen = new Set<string>()
+    for (const id of [...Object.keys(show.slides), ...arrangement]) {
+        if (seen.has(id) || !show.slides[id]) continue
+        seen.add(id)
+        parts.push({ id, label: normalizeLabel(show.slides[id].group) || "verse", text: slideText(show.slides[id]) })
+    }
+    return { parts, arrangement }
+}
+
+function readPages(show: Show | undefined, blob: ItemBlob | undefined): TextPage[] {
+    const layout = show?.layouts?.arrangement || (show ? Object.values(show.layouts || {})[0] : undefined)
+    if (show?.slides && layout?.slides?.length) {
+        return layout.slides.map((slide) => ({ id: slide.id, text: slideText(show.slides[slide.id]) }))
+    }
+    if (blob?.slides?.length) return blob.slides
+    const only = firstSlide(show)
+    return [{ id: "slide-1", text: slideText(only) || show?.name || "" }]
+}
+
+function firstSlide(show: Show | undefined): Slide | undefined {
+    if (!show?.slides) return undefined
+    return Object.values(show.slides)[0]
+}
+
+function lastLayoutSlide(show: Show | undefined): SlideData | undefined {
+    const layout = show?.layouts?.arrangement || (show ? Object.values(show.layouts || {})[0] : undefined)
+    if (!layout?.slides?.length) return undefined
+    return layout.slides[layout.slides.length - 1]
+}
+
+function slideText(slide: Slide | undefined): string {
+    return slide?.items?.[0]?.lines?.[0]?.text?.[0]?.value || ""
+}
+
+function normalizeLabel(group: string | null | undefined): SongPartLabel | null {
+    const label = (group || "").trim().toLowerCase()
+    if ((SONG_PART_LABELS as readonly string[]).includes(label)) return label as SongPartLabel
+    return null
+}

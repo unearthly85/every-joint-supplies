@@ -6,10 +6,10 @@ Churches do not run these. Every change we make under `src/extensions/church/`, 
 
 | Layer | What it covers | Where | In CI |
 |---|---|---|---|
-| Unit | Product name, feature flags, and dictionary rebrand in `src/extensions/church` | `src/extensions/church/*.test.ts` | Every pull request and every push to `main`. Coverage is printed and must stay at or above 90% lines/functions/statements and 80% branches for that folder. |
+| Unit | Product name, feature flags, dictionary rebrand, and the Sunday service model in `src/extensions/church` | `src/extensions/church/**/*.test.ts` | Every pull request and every push to `main`. Coverage is printed and must stay at or above 90% lines/functions/statements and 80% branches for that folder. That gate covers the service module, and it is stricter than an 80% gate on the module alone. |
 | Integration | Core hooks we already touch: the Electron reader refuses ChurchApps cloud sync unless the process is vitest itself | `src/extensions/church/hooks.integration.test.ts` | Same vitest run as the unit tests. |
 | Installer smoke | Silent NSIS install, launch, product name, uninstall | `scripts/ci/windows-installer-smoke.ps1` | Only on the full Windows job (below). The job fails if the process does not stay up, the exe ProductName is not Every Joint Supplies, or the main window title is not that name. |
-| Electron end to end | Launch, open the Welcome show, present to a windowed output | `config/testing/church-present.test.ts` | Not run. The file is a scaffold (`test.fixme`). See below. |
+| Electron end to end | Open a new Sunday from the Faith Covenant template and see advertised time 10:30 and countdown 10:27–10:32 | `config/testing/church-present.test.ts` | Every pull request and every push to `main`, after the unit tests, on `ubuntu-latest` under xvfb. |
 
 Lint of code we added fails the pull request: `src/extensions/church` (not the test files) and the Electron hooks `productConfig.ts` and `applyProductName.ts`. The commands do not pass `--fix`.
 
@@ -17,10 +17,11 @@ A full `eslint` of upstream `src/electron`, `src/frontend`, and the Svelte tree 
 
 ## What runs when
 
-**Every pull request, and every push to `main`.** The **Unit tests and lint** job on `ubuntu-latest`:
+**Every pull request, and every push to `main`.** The **Unit tests, lint, and Sunday e2e** job on `ubuntu-latest`:
 
 - `vitest run --coverage` (all `src/**/*.test.ts`, including upstream tests and ours)
-- The four ESLint commands above
+- ESLint on `src/extensions/church` (tests excluded) and on `productConfig.ts` and `applyProductName.ts`
+- `npm run build`, then `npm run test:e2e:sunday` under xvfb. That is the one Playwright-for-Electron test. It reuses `config/testing/electronHarness.ts` (skip the first-run wizard, temporary store). Upstream `config/testing/start.test.ts` is not part of this job.
 
 A failure fails the job. npm and Electron downloads are cached.
 
@@ -37,14 +38,10 @@ The smoke test:
 
 It does not open a show. Signing stays off unless the secrets in [SIGNING.md](SIGNING.md) are set.
 
-## Electron end to end is not in CI yet
+## Sunday end to end
 
-`config/testing/church-present.test.ts` is the scaffold for "launch, open the Welcome show, present to a windowed output". It is `test.fixme`, so a Playwright run records it as not executed.
+`config/testing/church-present.test.ts` launches the built app with `config/testing/electronHarness.ts`, opens the New Sunday panel, and checks the Faith Covenant times: advertised 10:30, countdown starts 10:27, ends 10:32. It then starts that Sunday.
 
-That flow is not feasible to enforce in this change:
+The harness is the piece later tasks should reuse. It writes a temporary store with the first-run wizard already finished and update prompts off, then launches Electron with `--no-sandbox`. It does not present to an output. Go Live stays a separate flow.
 
-- It needs `npm run build` and a display (xvfb on Linux). That is several minutes, so it does not belong on the pull-request job.
-- `windows-latest` cannot compile the native addons, so it cannot build the app the test would launch.
-- Go Live stays disabled until an output exists (`Top.svelte`). Creating a windowed output goes through output settings. Upstream's `config/testing/start.test.ts` gets through the first-run wizard and creates a show; it does not present. The Welcome show from `createDefaultShow` is behind that same wizard.
-
-When the selectors are stable, drop `test.fixme`, follow the launch setup in `config/testing/start.test.ts`, and run it under xvfb on the full-ci job. Until then, do not treat a green pull request as proof of the Sunday present flow.
+The job builds the app and runs only this test (`npm run test:e2e:sunday`) under xvfb. It does not run `config/testing/start.test.ts`. `windows-latest` is still the wrong image for a native build; this test stays on `ubuntu-latest`.

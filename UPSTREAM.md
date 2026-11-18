@@ -91,6 +91,7 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/main.ts` | Document title from `product.json`. |
 | `src/frontend/utils/language.ts` | Replaces the word `FreeShow` in translation strings with our product name. |
 | `src/frontend/components/main/Top.svelte`, `Splash.svelte`, `ProfileSelector.svelte` | Visible product name. |
+| `src/frontend/App.svelte` | Mounts the New Sunday booth panel (`src/extensions/church/SundayPanel.svelte`). The service itself is stored as a normal project and shows. |
 | `src/frontend/components/main/popups/About.svelte` | Product name, GPL credit, and a "Based on FreeShow" link. |
 | `src/frontend/components/main/Tipbar.svelte` | Does not send people to ChurchApps fundraising. |
 | `src/frontend/utils/analytics.ts` | `trackEvent` returns immediately when analytics are off, including scripture usage. |

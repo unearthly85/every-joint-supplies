@@ -23,6 +23,7 @@
     import { focusArea, logerror, mainClick, toggleRemoteStream } from "./utils/common"
     import { keydown } from "./utils/shortcuts"
     import { startup } from "./utils/startup"
+    import SundayPanel from "../extensions/church/SundayPanel.svelte"
 
     startup()
 
@@ -93,6 +94,7 @@
             <ProgressPanel />
 
             <MainLayout />
+            <SundayPanel />
 
             {#if ready && Object.keys($profiles).filter((a) => a !== "admin").length && $activeProfile === null}
                 <ProfileSelector />
