@@ -18,6 +18,10 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `service/model.ts` is the service, section, and item model. It is stored as a FreeShow project and shows (sections in the project list, song parts as slide groups, the arrangement as the layout). `SundayPanel.svelte` is the booth screen for starting a Faith Covenant Sunday. `App.svelte` mounts that panel. That mount is the core hook, listed in [UPSTREAM.md](../../../UPSTREAM.md). The timer that plays the countdown is a later task. This module only stores the times.
 
+## Stage display
+
+`stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
+
 ## Placeholder icon
 
 `scripts/placeholder-icon.py` draws `public/icon.png`, `public/icon.ico`, and `src/server/icon.png`. Replace those files when a real icon exists. No need to change the name config to do that.
