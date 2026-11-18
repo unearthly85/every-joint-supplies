@@ -8,7 +8,9 @@ import {
     FAITH_COVENANT_SUNDAY,
     faithCovenantSunday,
     fromStored,
+    nextSunday,
     parseClock,
+    showFileName,
     simulateFreeShowSave,
     timeframeIsSet,
     toStored,
@@ -34,25 +36,45 @@ function blocks(refs: ProjectShowRef[]): ProjectShowRef[][] {
 
 describe("countdown times", () => {
     it("mode A starts the countdown at the configured start time", () => {
-        expect(countdownWindow("A", FAITH_COVENANT_SUNDAY.startTime, FAITH_COVENANT_SUNDAY.countdownDurationMs)).toEqual({ starts: "10:27", ends: "10:32" })
-        expect(countdownLine({ timingMode: "A", startTime: "10:27", countdownDurationMs: 5 * 60 * 1000 })).toBe("Countdown starts 10:27, ends 10:32")
+        const window = countdownWindow("A", FAITH_COVENANT_SUNDAY.startTime, FAITH_COVENANT_SUNDAY.countdownDurationSeconds)
+        expect(parseClock(window.starts)).toBe(parseClock("10:27"))
+        expect(parseClock(window.ends)).toBe(parseClock("10:32"))
+        const line = countdownLine({ timingMode: "A", startTime: "10:27", countdownDurationSeconds: 300 })
+        expect(line.startsWith("Countdown starts ")).toBe(true)
+        expect(parseClock(line.slice("Countdown starts ".length, line.indexOf(", ends ")))).toBe(parseClock("10:27"))
+        expect(parseClock(line.slice(line.indexOf(", ends ") + ", ends ".length))).toBe(parseClock("10:32"))
     })
 
     it("mode B starts the countdown so it ends at the start time", () => {
-        expect(countdownWindow("B", "10:30", 5 * 60 * 1000)).toEqual({ starts: "10:25", ends: "10:30" })
-        expect(countdownWindow("B", "10:27", 5 * 60 * 1000)).toEqual({ starts: "10:22", ends: "10:27" })
-        expect(countdownLine({ timingMode: "B", startTime: "10:30", countdownDurationMs: 5 * 60 * 1000 })).toBe("Countdown starts 10:25, ends 10:30")
+        const atAdvertised = countdownWindow("B", "10:30", 5 * 60)
+        expect(parseClock(atAdvertised.starts)).toBe(parseClock("10:25"))
+        expect(parseClock(atAdvertised.ends)).toBe(parseClock("10:30"))
+        const atStart = countdownWindow("B", "10:27", 5 * 60)
+        expect(parseClock(atStart.starts)).toBe(parseClock("10:22"))
+        expect(parseClock(atStart.ends)).toBe(parseClock("10:27"))
+    })
+
+    it("keeps leftover seconds instead of rounding to a minute", () => {
+        const window = countdownWindow("A", "10:27:00", 5 * 60 + 30)
+        expect(parseClock(window.ends) - parseClock(window.starts)).toBe(330)
+        expect(window.ends).toBe("10:32:30")
+        const backwards = countdownWindow("B", "00:02:00", 5 * 60 + 30)
+        expect(backwards.starts).toBe("23:56:30")
     })
 
     it("wraps past midnight in either direction", () => {
-        expect(countdownWindow("A", "23:50", 20 * 60 * 1000)).toEqual({ starts: "23:50", ends: "00:10" })
-        expect(countdownWindow("B", "00:02", 5 * 60 * 1000)).toEqual({ starts: "23:57", ends: "00:02" })
-        expect(countdownWindow("A", "10:00", 0)).toEqual({ starts: "10:00", ends: "10:00" })
+        expect(countdownWindow("A", "23:50", 20 * 60)).toEqual({ starts: "23:50:00", ends: "00:10:00" })
+        expect(countdownWindow("B", "00:02", 5 * 60)).toEqual({ starts: "23:57:00", ends: "00:02:00" })
+        expect(countdownWindow("A", "10:00", 0)).toEqual({ starts: "10:00:00", ends: "10:00:00" })
     })
 
     it("reads a clock with or without seconds and rejects anything else", () => {
-        expect(parseClock("10:30")).toBe(630)
-        expect(parseClock("9:05:00")).toBe(545)
+        expect(parseClock("10:30")).toBe(10 * 3600 + 30 * 60)
+        expect(parseClock("10:27 AM")).toBe(parseClock("10:27"))
+        expect(parseClock("10:32 PM")).toBe(22 * 3600 + 32 * 60)
+        expect(parseClock("12:00 AM")).toBe(0)
+        expect(parseClock("12:00 PM")).toBe(12 * 3600)
+        expect(parseClock("9:05:00")).toBe(9 * 3600 + 5 * 60)
         expect(() => parseClock("10:60")).toThrow(/10:30/)
         expect(() => parseClock("24:00")).toThrow(/10:30/)
         expect(() => parseClock("morning")).toThrow(/10:30/)
@@ -66,10 +88,10 @@ describe("auto-advance", () => {
         expect(timeframeIsSet({ untilTime: "" })).toBe(false)
         expect(timeframeIsSet({ onMediaEnd: false })).toBe(false)
         expect(autoAdvanceEnabled({})).toBe(false)
-        expect(autoAdvanceEnabled({ timeframe: { durationMs: 1000 } })).toBe(true)
+        expect(autoAdvanceEnabled({ timeframe: { durationSeconds: 1 } })).toBe(true)
         expect(autoAdvanceEnabled({ timeframe: { untilTime: "10:32" } })).toBe(true)
         expect(autoAdvanceEnabled({ timeframe: { onMediaEnd: true } })).toBe(true)
-        expect(autoAdvanceEnabled({ autoAdvance: false, timeframe: { durationMs: 1000 } })).toBe(false)
+        expect(autoAdvanceEnabled({ autoAdvance: false, timeframe: { durationSeconds: 1 } })).toBe(false)
         expect(autoAdvanceEnabled({ autoAdvance: true })).toBe(true)
     })
 })
@@ -78,8 +100,8 @@ describe("Faith Covenant Sunday", () => {
     it("instantiates a dated service and round-trips through stored project and show data", () => {
         const service = faithCovenantSunday(DATE)
         expect(service.name).toBe(`Sunday ${DATE}`)
-        expect(service.advertisedTime).toBe("10:30")
-        expect(service.startTime).toBe("10:27")
+        expect(service.advertisedTime).toBe("10:30:00")
+        expect(service.startTime).toBe("10:27:00")
         expect(service.timingMode).toBe("A")
         expect(service.sections.map((section) => section.kind)).toEqual(["pre_service_loop", "warmup", "service"])
 
@@ -88,13 +110,22 @@ describe("Faith Covenant Sunday", () => {
         expect(stored.project.created).toBe(Date.parse(`${DATE}T12:00:00Z`))
         expect(stored.project.shows.map((ref) => ref.type)).toEqual(["section", "show", "section", "video", "section", "show", "show", "show"])
         expect(stored.project.shows[0].loop).toBe(true)
+        expect(stored.project.shows[0].id).toBe(`${service.id}--pre-service`)
+        expect(stored.project.shows[2].id).toBe(`${service.id}--countdown`)
+        expect(stored.project.shows[4].id).toBe(`${service.id}--service`)
         expect(stored.project.shows[2].loop).toBe(false)
         expect(stored.project.shows[0].data.time).toBeUndefined()
+        expect(parseClock(stored.project.shows[2].data.time)).toBe(parseClock("10:27"))
+        expect(parseClock(stored.project.shows[4].data.time)).toBe(parseClock("10:32"))
 
         const song = stored.shows[`${service.id}--song`]
         expect(song.settings.activeLayout).toBe("arrangement")
         expect(song.layouts.arrangement.slides.map((slide) => slide.id)).toEqual(["verse-1", "chorus", "verse-1", "chorus", "bridge", "chorus", "tag"])
         expect(song.slides["verse-1"].group).toBe("verse")
+        expect(song.slides["verse-1"].globalGroup).toBe("verse")
+        expect(song.slides["verse-1"].color).toBe("#5825f5")
+        expect(song.slides["verse-1"].items[0].style).toBe("top:88px;left:50px;height:904px;width:1820px;")
+        expect(song.name).toBe("Sunday 2026-11-22 – Song")
         expect(song.slides.chorus.group).toBe("chorus")
         expect(song.slides.bridge.group).toBe("bridge")
         expect(song.slides.tag.group).toBe("tag")
@@ -103,20 +134,22 @@ describe("Faith Covenant Sunday", () => {
         const video = stored.project.shows.find((ref) => ref.type === "video")
         expect(video?.id).toBe("media/countdown.mp4")
         expect(video?.data.church.autoAdvance).toBe(true)
-        expect(video?.data.church.timeframe).toEqual({ durationMs: 5 * 60 * 1000, onMediaEnd: true })
+        expect(video?.data.church.timeframe).toEqual({ durationSeconds: 300, onMediaEnd: true })
+        expect(video?.name).toBe("Sunday 2026-11-22 – Countdown video")
 
         const restored = fromStored(simulateFreeShowSave(JSON.parse(JSON.stringify(stored))))
-        expect(restored.advertisedTime).toBe("10:30")
-        expect(restored.startTime).toBe("10:27")
+        expect(restored.advertisedTime).toBe("10:30:00")
+        expect(restored.startTime).toBe("10:27:00")
         expect(restored.timingMode).toBe("A")
-        expect(restored.countdownDurationMs).toBe(5 * 60 * 1000)
+        expect(restored.countdownDurationSeconds).toBe(300)
         expect(restored.sections.map((section) => section.kind)).toEqual(["pre_service_loop", "warmup", "service"])
         expect(restored.sections[2].items.map((item) => item.type)).toEqual(["announcement", "scripture", "song"])
         const restoredSong = restored.sections[2].items[2]
         expect(restoredSong.arrangement).toEqual(["verse-1", "chorus", "verse-1", "chorus", "bridge", "chorus", "tag"])
         expect(restoredSong.parts?.map((part) => part.label)).toEqual(["verse", "chorus", "bridge", "tag"])
         expect(restored.sections[1].items[0].autoAdvance).toBe(true)
-        expect(restored.sections[0].items[0].autoAdvance).toBe(false)
+        expect(restored.sections[0].items[0].timeframe?.untilTime).toBe("10:27:00")
+        expect(restored.sections[0].items[0].autoAdvance).toBe(true)
     })
 
     it("keeps section order from the project list and the arrangement from the show layout", () => {
@@ -132,7 +165,7 @@ describe("Faith Covenant Sunday", () => {
 
     it("keeps mode, until-time, and an explicit auto-advance off", () => {
         const service = faithCovenantSunday(DATE, { timingMode: "B", advertisedTime: "10:45", startTime: "10:30", name: "Evening" })
-        service.countdownDurationMs = 5 * 60 * 1000
+        service.countdownDurationSeconds = 5 * 60
         service.sections[2].items[0].timeframe = { untilTime: "10:35" }
         service.sections[2].items[0].autoAdvance = false
         service.sections.push({
@@ -148,7 +181,7 @@ describe("Faith Covenant Sunday", () => {
                         { id: "point-1", text: "First point" },
                         { id: "point-2", text: "Second point" }
                     ],
-                    timeframe: { durationMs: 30_000 }
+                    timeframe: { durationSeconds: 30 }
                 }
             ]
         })
@@ -166,9 +199,9 @@ describe("Faith Covenant Sunday", () => {
         const restored = roundTrip(service)
         expect(restored.name).toBe("Evening")
         expect(restored.timingMode).toBe("B")
-        expect(restored.advertisedTime).toBe("10:45")
-        expect(restored.startTime).toBe("10:30")
-        expect(countdownWindow(restored.timingMode, restored.startTime, restored.countdownDurationMs)).toEqual({ starts: "10:25", ends: "10:30" })
+        expect(restored.advertisedTime).toBe("10:45:00")
+        expect(restored.startTime).toBe("10:30:00")
+        expect(countdownWindow(restored.timingMode, restored.startTime, restored.countdownDurationSeconds)).toEqual({ starts: "10:25:00", ends: "10:30:00" })
         expect(restored.sections.map((section) => section.kind)).toEqual(["pre_service_loop", "warmup", "service", "post_service", "custom"])
         expect(restored.sections[2].items[0].timeframe).toEqual({ untilTime: "10:35" })
         expect(restored.sections[2].items[0].autoAdvance).toBe(false)
@@ -182,7 +215,7 @@ describe("Faith Covenant Sunday", () => {
     it("rejects a service that is not ready to store", () => {
         expect(() => faithCovenantSunday("22 Nov")).toThrow(/date/)
         expect(() => faithCovenantSunday(DATE, { timingMode: "C" as "A" })).toThrow(/mode/)
-        expect(() => faithCovenantSunday(DATE, { countdownDurationMs: -1 })).toThrow(/negative/)
+        expect(() => faithCovenantSunday(DATE, { countdownDurationSeconds: -1 })).toThrow(/negative/)
         expect(() => faithCovenantSunday(DATE, { startTime: "noon" })).toThrow(/10:30/)
         expect(() => fromStored({ projectId: "x", project: { name: "x", created: 0, parent: "/", shows: [] }, shows: {} })).toThrow(/not a Sunday/)
     })
@@ -191,7 +224,7 @@ describe("Faith Covenant Sunday", () => {
         const stored = toStored(faithCovenantSunday(DATE))
         delete stored.project.church
         const restored = fromStored(stored)
-        expect(restored.startTime).toBe("10:27")
+        expect(restored.startTime).toBe("10:27:00")
         expect(restored.timingMode).toBe("A")
     })
 
@@ -207,7 +240,7 @@ describe("Faith Covenant Sunday", () => {
 
         const restored = fromStored(stored)
         const song = restored.sections[2].items[2]
-        expect(song.timeframe).toEqual({ durationMs: 12_000, onMediaEnd: true })
+        expect(song.timeframe).toEqual({ durationSeconds: 12, onMediaEnd: true })
         expect(song.autoAdvance).toBe(true)
     })
 
@@ -250,7 +283,7 @@ describe("Faith Covenant Sunday", () => {
                 name: "Loose",
                 created: 0,
                 parent: "/",
-                church: { version: 1, date: DATE, advertisedTime: "10:30", startTime: "10:27", timingMode: "A", countdownDurationMs: 0 },
+                church: { version: 1, date: DATE, advertisedTime: "10:30:00", startTime: "10:27:00", timingMode: "A", countdownDurationSeconds: 0 },
                 shows: [
                     { id: "clip.mp4", type: "video", name: "Clip" },
                     { id: "section-1", type: "section" },
@@ -270,7 +303,7 @@ describe("Faith Covenant Sunday", () => {
         expect(restored.sections[0].items[0]).toMatchObject({ id: "clip.mp4", type: "video" })
         expect(restored.sections[1].name).toBe("Section")
         expect(restored.sections[1].kind).toBe("custom")
-        expect(restored.sections[1].items.map((item) => item.type)).toEqual(["song", "video", "video", "scripture", "announcement", "video"])
+        expect(restored.sections[1].items.map((item) => item.type)).toEqual(["song", "image", "audio", "scripture", "announcement", "video"])
         expect(restored.sections[1].items[0]).toMatchObject({ id: "imported", parts: [{ id: "chorus", label: "chorus", text: "" }] })
         expect(restored.sections[1].items[1].mediaPath).toBe("photo.png")
         expect(restored.sections[1].items[3].scripture).toBe("John 1")
@@ -290,7 +323,7 @@ describe("Faith Covenant Sunday", () => {
             parts: [{ id: "verse-1", label: "verse", text: "Line" }],
             timeframe: { onMediaEnd: true }
         }
-        const emptySong: ServiceItem = { id: "empty-song", type: "song", name: "Empty", parts: [], timeframe: { durationMs: 1000, onMediaEnd: true } }
+        const emptySong: ServiceItem = { id: "empty-song", type: "song", name: "Empty", parts: [], timeframe: { durationSeconds: 1, onMediaEnd: true } }
         service.sections = [{ id: "only", kind: "service", name: "Service", items: [bare, pages, sung, emptySong] }]
         const stored = toStored(service)
         expect(stored.shows[`${service.id}--reading`].slides.scripture.items[0].lines?.[0].text[0].value).toBe("John 1")
@@ -315,6 +348,45 @@ describe("Faith Covenant Sunday", () => {
         delete stored.project.shows
         expect(fromStored(stored).sections).toEqual([])
         expect(simulateFreeShowSave(stored).project.shows).toBeUndefined()
+    })
+
+    it("gives every show a name that belongs to that Sunday", () => {
+        const first = toStored(faithCovenantSunday("2026-11-22"))
+        const second = toStored(faithCovenantSunday("2026-11-29"))
+        const firstNames = Object.values(first.shows).map((show) => show.name)
+        const secondNames = Object.values(second.shows).map((show) => show.name)
+        expect(firstNames).toContain(showFileName("Sunday 2026-11-22", "Song"))
+        expect(secondNames).toContain(showFileName("Sunday 2026-11-29", "Song"))
+        expect(firstNames.filter((name) => secondNames.includes(name))).toEqual([])
+        expect(firstNames.some((name) => name === "Song")).toBe(false)
+        expect(first.project.shows.find((ref) => ref.id.endsWith("--pre-service"))?.id).not.toBe(second.project.shows.find((ref) => ref.id.endsWith("--pre-service"))?.id)
+    })
+
+    it("picks the coming Sunday, including today when today is Sunday", () => {
+        expect(nextSunday(new Date(2026, 10, 18))).toBe("2026-11-22")
+        expect(nextSunday(new Date(2026, 10, 22))).toBe("2026-11-22")
+        expect(nextSunday(new Date(2026, 10, 23))).toBe("2026-11-29")
+    })
+
+    it("reads every line of a slide and keeps a picture separate from a sound", () => {
+        const service = faithCovenantSunday(DATE)
+        service.sections[2].items.push(
+            { id: "picture", type: "image", name: "Picture", mediaPath: "photo.png" },
+            { id: "bed", type: "audio", name: "Bed", mediaPath: "bed.mp3" }
+        )
+        const stored = toStored(service)
+        const scriptureId = `${service.id}--scripture`
+        stored.shows[scriptureId].slides["psalm-100"].items[0].lines = [
+            { align: "", text: [{ value: "Make a joyful noise", style: "" }] },
+            { align: "", text: [{ value: "to the Lord", style: "" }] }
+        ]
+        const restored = fromStored(stored)
+        expect(restored.sections[2].items.find((item) => item.id === "scripture")?.slides?.[0].text).toBe("Make a joyful noise\nto the Lord")
+        expect(restored.sections[2].items.filter((item) => item.type === "image" || item.type === "audio").map((item) => [item.type, item.mediaPath])).toEqual([
+            ["image", "photo.png"],
+            ["audio", "bed.mp3"]
+        ])
+        expect(stored.project.shows.filter((ref) => ref.type === "image" || ref.type === "audio").map((ref) => ref.type)).toEqual(["image", "audio"])
     })
 
     it("treats a blank song group as a verse and ignores an empty slide list", () => {

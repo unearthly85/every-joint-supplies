@@ -40,7 +40,7 @@ It does not open a show. Signing stays off unless the secrets in [SIGNING.md](SI
 
 ## Sunday end to end
 
-`config/testing/church-present.test.ts` launches the built app with `config/testing/electronHarness.ts`, opens the New Sunday panel, and checks the Faith Covenant times: advertised 10:30, countdown starts 10:27, ends 10:32. It then starts that Sunday.
+`config/testing/church-present.test.ts` launches the built app with `config/testing/electronHarness.ts`. Show files go to a temporary data folder, not the machine's Documents/FreeShow folder. The test opens New Sunday, checks advertised time 10:30 AM and countdown 10:27 AM–10:32 AM, starts that Sunday, and checks the project list has Pre-service, Countdown, and Service. It starts a second date, restarts on the same folder, and checks each Sunday still has its own song. After start, the panel is closed and the output preview is visible.
 
 The harness is the piece later tasks should reuse. It writes a temporary store with the first-run wizard already finished and update prompts off, then launches Electron with `--no-sandbox`. It does not present to an output. Go Live stays a separate flow.
 

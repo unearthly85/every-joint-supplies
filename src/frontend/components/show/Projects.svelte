@@ -26,6 +26,7 @@
     import { getRecentlyUsedProjects, isProjectLinked, openProject } from "./project"
     import ProjectContentList from "./ProjectContentList.svelte"
     import ProjectList from "./ProjectList.svelte"
+    import { sundayPanelOpen } from "../../../extensions/church/SundayPanel.svelte"
 
     let tree: Tree[] = []
 
@@ -392,6 +393,7 @@
                         </p>
 
                         <div class="right context">
+                            <MaterialButton data-testid="open-new-sunday" on:click={() => sundayPanelOpen.set(true)}>New Sunday</MaterialButton>
                             <MaterialButton style="width: 32px;height: 100%;padding: 0.3em 0.5em;border-bottom-right-radius: 10px;{showProjectDropdown ? '' : 'opacity: 0.8;'}" title="create_show.more_options" icon="more" on:click={() => (showProjectDropdown = !showProjectDropdown)} white={!showProjectDropdown}>
                                 <!-- prevent force "white" -->
                                 <span style="display: none;"></span>
@@ -488,6 +490,7 @@
 
                 {#if !showProjectsOptions}
                     <div class="right">
+                        <MaterialButton data-testid="open-new-sunday" on:click={() => sundayPanelOpen.set(true)}>New Sunday</MaterialButton>
                         <MaterialButton style="width: 32px;height: 100%;padding: 0.3em 0.5em;border-bottom-right-radius: 10px;{showProjectDropdown ? '' : 'opacity: 0.8;'}" title="create_show.more_options" icon="more" on:click={() => (showProjectDropdown = !showProjectDropdown)} white={!showProjectDropdown}>
                             <span style="display: none;"></span>
                         </MaterialButton>

@@ -21,6 +21,13 @@ describe("upstream project and show shape", () => {
         expect(show).toContain("slides: SlideData[]")
         expect(show).toContain("nextTimer?: number")
         expect(show).toContain("nextAfterMedia?: boolean")
+        const itemHelpers = readFileSync(new URL("../../../frontend/components/edit/scripts/itemHelpers.ts", import.meta.url), "utf8")
+        const defaults = readFileSync(new URL("../../../electron/data/defaults.ts", import.meta.url), "utf8")
+        expect(itemHelpers).toContain('export const DEFAULT_ITEM_STYLE = "top:88px;left:50px;height:904px;width:1820px;"')
+        expect(defaults).toContain('verse: { name: "verse", default: true, color: "#5825f5", shortcut: "V" }')
+        expect(defaults).toContain('chorus: { name: "chorus", default: true, color: "#f525d2", shortcut: "C" }')
+        expect(defaults).toContain('bridge: { name: "bridge", default: true, color: "#f52598", shortcut: "B" }')
+        expect(defaults).toContain('tag: { name: "tag", default: true, color: "#7525f5" }')
     })
 
     it("still removes the fields a Sunday must not depend on after save", () => {

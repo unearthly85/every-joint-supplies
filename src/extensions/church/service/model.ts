@@ -18,8 +18,19 @@ export type SongPartLabel = (typeof SONG_PART_LABELS)[number]
 export const SECTION_KINDS = ["pre_service_loop", "warmup", "service", "post_service", "custom"] as const
 export type SectionKind = (typeof SECTION_KINDS)[number]
 
-export const ITEM_TYPES = ["song", "scripture", "sermon", "announcement", "video"] as const
+export const ITEM_TYPES = ["song", "scripture", "sermon", "announcement", "video", "image", "audio"] as const
 export type ItemType = (typeof ITEM_TYPES)[number]
+
+/** Same string as FreeShow's DEFAULT_ITEM_STYLE. A generated slide uses it so text lands in the usual box. */
+export const DEFAULT_ITEM_STYLE = "top:88px;left:50px;height:904px;width:1820px;"
+
+/** Default group colours from FreeShow. globalGroup is the id, so shortcuts and colours still apply. */
+export const SONG_GROUP_FIELDS: { [label in SongPartLabel]: { color: string } } = {
+    verse: { color: "#5825f5" },
+    chorus: { color: "#f525d2" },
+    bridge: { color: "#f52598" },
+    tag: { color: "#7525f5" }
+}
 
 export type TimingMode = "A" | "B"
 
@@ -28,14 +39,15 @@ export const CHURCH_VERSION = 1
 
 /** Faith Covenant's usual Sunday. Mode A: the countdown begins at the start time. */
 export const FAITH_COVENANT_SUNDAY = {
-    advertisedTime: "10:30",
-    startTime: "10:27",
-    countdownDurationMs: 5 * 60 * 1000,
+    advertisedTime: "10:30:00",
+    startTime: "10:27:00",
+    countdownDurationSeconds: 5 * 60,
     timingMode: "A" as TimingMode
 }
 
 export interface Timeframe {
-    durationMs?: number
+    /** Length in seconds. Not rounded to a minute. */
+    durationSeconds?: number
     untilTime?: string
     onMediaEnd?: boolean
 }
@@ -80,7 +92,7 @@ export interface ChurchService {
     advertisedTime: string
     startTime: string
     timingMode: TimingMode
-    countdownDurationMs: number
+    countdownDurationSeconds: number
     sections: ServiceSection[]
 }
 
@@ -90,7 +102,7 @@ export interface ChurchBlob {
     advertisedTime: string
     startTime: string
     timingMode: TimingMode
-    countdownDurationMs: number
+    countdownDurationSeconds: number
 }
 
 interface SectionBlob {
@@ -120,43 +132,70 @@ export interface StoredService {
     shows: { [id: string]: Show }
 }
 
+/** Seconds after midnight. Accepts 24-hour times and 12-hour times such as "10:27 AM". */
 export function parseClock(value: string): number {
-    const match = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(value.trim())
+    const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])?$/.exec(value.trim())
     if (!match) throw new Error("Enter a time like 10:30")
-    const hours = Number(match[1])
+    let hours = Number(match[1])
     const minutes = Number(match[2])
-    if (hours > 23 || minutes > 59) throw new Error("Enter a time like 10:30")
-    return hours * 60 + minutes
+    const seconds = match[3] ? Number(match[3]) : 0
+    const suffix = match[4]?.toLowerCase()
+    if (minutes > 59 || seconds > 59) throw new Error("Enter a time like 10:30")
+    if (suffix) {
+        if (hours < 1 || hours > 12) throw new Error("Enter a time like 10:30")
+        hours = suffix === "am" ? hours % 12 : (hours % 12) + 12
+    } else if (hours > 23) {
+        throw new Error("Enter a time like 10:30")
+    }
+    return hours * 3600 + minutes * 60 + seconds
 }
 
-export function formatClock(minutesPastMidnight: number): string {
-    const day = 24 * 60
-    const wrapped = ((minutesPastMidnight % day) + day) % day
-    const hours = Math.floor(wrapped / 60)
-    const minutes = wrapped % 60
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
+/** 24-hour HH:mm:ss. Stored times use this so seconds are not lost. */
+export function canonicalClock(totalSeconds: number): string {
+    const day = 24 * 60 * 60
+    const wrapped = ((Math.round(totalSeconds) % day) + day) % day
+    const hours = Math.floor(wrapped / 3600)
+    const minutes = Math.floor((wrapped % 3600) / 60)
+    const seconds = wrapped % 60
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+}
+
+/** Clock in the system locale. A US locale shows "10:27 AM". Seconds stay visible when they are not zero. */
+export function formatClock(totalSeconds: number): string {
+    const canonical = canonicalClock(totalSeconds)
+    const [hours, minutes, seconds] = canonical.split(":").map(Number)
+    const cycle = new Intl.DateTimeFormat(undefined, { hour: "numeric" }).resolvedOptions().hourCycle
+    const showSeconds = seconds !== 0
+    if (cycle === "h12" || cycle === "h11") {
+        const suffix = hours < 12 ? "AM" : "PM"
+        const hour12 = hours % 12 || 12
+        const clock = `${hour12}:${String(minutes).padStart(2, "0")}${showSeconds ? `:${String(seconds).padStart(2, "0")}` : ""}`
+        return `${clock} ${suffix}`
+    }
+    return showSeconds ? canonical : `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`
 }
 
 /**
  * Mode A (default): the pre-service loop hands off at the start time and the
  * countdown begins then. Mode B: the countdown ends at the start time, so it
- * begins one countdown length earlier.
+ * begins one countdown length earlier. The length is seconds, not rounded minutes.
+ * Returned clocks are canonical HH:mm:ss.
  */
-export function countdownWindow(mode: TimingMode, startTime: string, durationMs: number): { starts: string; ends: string } {
+export function countdownWindow(mode: TimingMode, startTime: string, durationSeconds: number): { starts: string; ends: string } {
     const start = parseClock(startTime)
-    const minutes = Math.round(durationMs / 60_000)
-    if (mode === "B") return { starts: formatClock(start - minutes), ends: formatClock(start) }
-    return { starts: formatClock(start), ends: formatClock(start + minutes) }
+    const length = Math.round(durationSeconds)
+    if (mode === "B") return { starts: canonicalClock(start - length), ends: canonicalClock(start) }
+    return { starts: canonicalClock(start), ends: canonicalClock(start + length) }
 }
 
-export function countdownLine(service: Pick<ChurchService, "timingMode" | "startTime" | "countdownDurationMs">): string {
-    const window = countdownWindow(service.timingMode, service.startTime, service.countdownDurationMs)
-    return `Countdown starts ${window.starts}, ends ${window.ends}`
+export function countdownLine(service: Pick<ChurchService, "timingMode" | "startTime" | "countdownDurationSeconds">): string {
+    const window = countdownWindow(service.timingMode, service.startTime, service.countdownDurationSeconds)
+    return `Countdown starts ${formatClock(parseClock(window.starts))}, ends ${formatClock(parseClock(window.ends))}`
 }
 
 export function timeframeIsSet(timeframe: Timeframe | undefined): boolean {
     if (!timeframe) return false
-    if (timeframe.durationMs != null) return true
+    if (timeframe.durationSeconds != null) return true
     if (timeframe.untilTime) return true
     return timeframe.onMediaEnd === true
 }
@@ -171,7 +210,7 @@ export interface FaithCovenantOptions {
     advertisedTime?: string
     startTime?: string
     timingMode?: TimingMode
-    countdownDurationMs?: number
+    countdownDurationSeconds?: number
     name?: string
 }
 
@@ -180,36 +219,37 @@ export function faithCovenantSunday(date: string, options: FaithCovenantOptions 
     const advertisedTime = options.advertisedTime ?? FAITH_COVENANT_SUNDAY.advertisedTime
     const startTime = options.startTime ?? FAITH_COVENANT_SUNDAY.startTime
     const timingMode = options.timingMode ?? FAITH_COVENANT_SUNDAY.timingMode
-    const countdownDurationMs = options.countdownDurationMs ?? FAITH_COVENANT_SUNDAY.countdownDurationMs
+    const countdownDurationSeconds = options.countdownDurationSeconds ?? FAITH_COVENANT_SUNDAY.countdownDurationSeconds
     if (timingMode !== "A" && timingMode !== "B") throw new Error("Timing mode must be A or B")
-    if (countdownDurationMs < 0) throw new Error("Countdown length cannot be negative")
-    parseClock(advertisedTime)
-    parseClock(startTime)
+    if (countdownDurationSeconds < 0) throw new Error("Countdown length cannot be negative")
+    const advertised = canonicalClock(parseClock(advertisedTime))
+    const start = canonicalClock(parseClock(startTime))
 
-    const countdown: Timeframe = { durationMs: countdownDurationMs, onMediaEnd: true }
+    const countdown: Timeframe = { durationSeconds: countdownDurationSeconds, onMediaEnd: true }
+    const id = `sunday-${date}-${start.replace(/:/g, "")}`
     const service: ChurchService = {
-        id: `sunday-${date}-${startTime.replace(":", "")}`,
+        id,
         name: options.name ?? `Sunday ${date}`,
         date,
-        advertisedTime,
-        startTime,
+        advertisedTime: advertised,
+        startTime: start,
         timingMode,
-        countdownDurationMs,
+        countdownDurationSeconds,
         sections: [
             {
-                id: "pre-service",
+                id: `${id}--pre-service`,
                 kind: "pre_service_loop",
                 name: "Pre-service",
-                items: [{ id: "welcome", type: "announcement", name: "Welcome slides", slides: [{ id: "welcome-slide", text: "Welcome" }] }]
+                items: [{ id: "welcome", type: "announcement", name: "Welcome slides", slides: [{ id: "welcome-slide", text: "Welcome" }], timeframe: { untilTime: start } }]
             },
             {
-                id: "countdown",
+                id: `${id}--countdown`,
                 kind: "warmup",
                 name: "Countdown",
                 items: [{ id: "countdown-video", type: "video", name: "Countdown video", mediaPath: "media/countdown.mp4", timeframe: countdown }]
             },
             {
-                id: "gathered",
+                id: `${id}--service`,
                 kind: "service",
                 name: "Service",
                 items: [
@@ -241,18 +281,19 @@ export function toStored(service: ChurchService): StoredService {
     const refs: ProjectShowRef[] = []
 
     for (const section of service.sections) {
+        const sectionTime = sectionClock(section.kind, service)
         refs.push({
             id: section.id,
             type: "section",
             name: section.name,
             notes: "",
             loop: section.kind === "pre_service_loop",
-            data: { church: { kind: section.kind, service: blob } satisfies SectionBlob }
+            data: { ...(sectionTime ? { time: sectionTime } : {}), church: { kind: section.kind, service: blob } satisfies SectionBlob }
         })
         for (const item of section.items) {
-            const built = buildShow(service.id, item, created)
+            const built = buildShow(service, item, created)
             if (built) shows[built.id] = built.show
-            refs.push(itemRef(service.id, item, built?.id))
+            refs.push(itemRef(service, item, built?.id))
         }
     }
 
@@ -297,7 +338,7 @@ export function fromStored(stored: StoredService): ChurchService {
         advertisedTime: blob.advertisedTime,
         startTime: blob.startTime,
         timingMode: blob.timingMode === "B" ? "B" : "A",
-        countdownDurationMs: blob.countdownDurationMs,
+        countdownDurationSeconds: blob.countdownDurationSeconds,
         sections
     }
 }
@@ -324,11 +365,33 @@ function churchBlob(service: ChurchService): ChurchBlob {
         advertisedTime: service.advertisedTime,
         startTime: service.startTime,
         timingMode: service.timingMode,
-        countdownDurationMs: service.countdownDurationMs
+        countdownDurationSeconds: service.countdownDurationSeconds
     }
 }
 
-function itemRef(serviceId: string, item: ServiceItem, showId: string | undefined): ProjectShowRef {
+export function showFileName(serviceName: string, itemName: string): string {
+    return `${serviceName} – ${itemName}`
+}
+
+export function nextSunday(from = new Date()): string {
+    const date = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+    const day = date.getDay()
+    const add = day === 0 ? 0 : 7 - day
+    date.setDate(date.getDate() + add)
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const dayOfMonth = String(date.getDate()).padStart(2, "0")
+    return `${date.getFullYear()}-${month}-${dayOfMonth}`
+}
+
+function sectionClock(kind: SectionKind, service: ChurchService): string | undefined {
+    if (kind !== "warmup" && kind !== "service") return undefined
+    const window = countdownWindow(service.timingMode, service.startTime, service.countdownDurationSeconds)
+    return formatClock(parseClock(kind === "warmup" ? window.starts : window.ends))
+}
+
+const MEDIA_TYPES: ItemType[] = ["video", "image", "audio"]
+
+function itemRef(service: ChurchService, item: ServiceItem, showId: string | undefined): ProjectShowRef {
     const autoAdvance = autoAdvanceEnabled(item)
     const blob: ItemBlob = {
         itemId: item.id,
@@ -341,15 +404,16 @@ function itemRef(serviceId: string, item: ServiceItem, showId: string | undefine
         parts: item.parts,
         arrangement: item.arrangement
     }
-    if (item.type === "video") {
-        return { id: item.mediaPath || item.id, type: "video", name: item.name, data: { church: blob } }
+    const name = showFileName(service.name, item.name)
+    if (MEDIA_TYPES.includes(item.type)) {
+        return { id: item.mediaPath || item.id, type: item.type === "image" || item.type === "audio" ? item.type : "video", name, data: { church: blob } }
     }
-    return { id: showId || `${serviceId}--${item.id}`, type: "show", name: item.name, data: { church: blob } }
+    return { id: showId || `${service.id}--${item.id}`, type: "show", name, data: { church: blob } }
 }
 
-function buildShow(serviceId: string, item: ServiceItem, created: number): { id: string; show: Show } | null {
-    if (item.type === "video") return null
-    const showId = `${serviceId}--${item.id}`
+function buildShow(service: ChurchService, item: ServiceItem, created: number): { id: string; show: Show } | null {
+    if (MEDIA_TYPES.includes(item.type)) return null
+    const showId = `${service.id}--${item.id}`
     const slides: Show["slides"] = {}
     const layoutSlides: SlideData[] = []
 
@@ -364,11 +428,11 @@ function buildShow(serviceId: string, item: ServiceItem, created: number): { id:
     }
 
     const last = layoutSlides[layoutSlides.length - 1]
-    if (last && item.timeframe?.durationMs != null) last.nextTimer = Math.round(item.timeframe.durationMs / 1000)
+    if (last && item.timeframe?.durationSeconds != null) last.nextTimer = Math.round(item.timeframe.durationSeconds)
     if (last && item.timeframe?.onMediaEnd) last.actions = { nextAfterMedia: true }
 
     const show: Show = {
-        name: item.name,
+        name: showFileName(service.name, item.name),
         origin: CHURCH_ORIGIN,
         category: null,
         settings: { activeLayout: "arrangement", template: null },
@@ -388,13 +452,21 @@ function textPages(item: ServiceItem): TextPage[] {
     return [{ id: "slide-1", text: item.name }]
 }
 
-function textSlide(group: string | null, text: string): Slide {
+function textSlide(group: SongPartLabel | null, text: string): Slide {
+    const fields = group ? SONG_GROUP_FIELDS[group] : null
     return {
         group,
-        color: null,
+        globalGroup: group || undefined,
+        color: fields?.color || null,
         settings: {},
         notes: "",
-        items: [{ type: "text", style: "", lines: [{ align: "", text: [{ value: text, style: "" }] }] }]
+        items: [
+            {
+                type: "text",
+                style: DEFAULT_ITEM_STYLE,
+                lines: text.split("\n").map((value) => ({ align: "", text: [{ value, style: "" }] }))
+            }
+        ]
     }
 }
 
@@ -425,7 +497,7 @@ function readItem(stored: StoredService, ref: ProjectShowRef): ServiceItem {
         autoAdvance: typeof blob?.autoAdvance === "boolean" ? blob.autoAdvance : autoAdvanceEnabled({ timeframe })
     }
     if (timeframe) item.timeframe = timeframe
-    if (type === "video") {
+    if (type === "video" || type === "image" || type === "audio") {
         item.mediaPath = blob?.mediaPath || ref.id
         return item
     }
@@ -448,7 +520,7 @@ function itemId(ref: ProjectShowRef, show: Show | undefined, blob: ItemBlob | un
 }
 
 function inferType(ref: ProjectShowRef, show: Show | undefined): ItemType {
-    if (ref.type === "video" || ref.type === "image" || ref.type === "audio") return "video"
+    if (ref.type === "image" || ref.type === "audio" || ref.type === "video") return ref.type
     if (show?.reference?.type === "scripture") return "scripture"
     const groups = Object.values(show?.slides || {}).map((slide) => normalizeLabel(slide.group))
     if (groups.some((label) => label !== null)) return "song"
@@ -459,7 +531,7 @@ function readTimeframe(blob: ItemBlob | undefined, show: Show | undefined): Time
     if (blob?.timeframe && timeframeIsSet(blob.timeframe)) return blob.timeframe
     const last = lastLayoutSlide(show)
     const timeframe: Timeframe = {}
-    if (last?.nextTimer != null) timeframe.durationMs = last.nextTimer * 1000
+    if (last?.nextTimer != null) timeframe.durationSeconds = last.nextTimer
     if (last?.actions?.nextAfterMedia) timeframe.onMediaEnd = true
     return timeframeIsSet(timeframe) ? timeframe : undefined
 }
@@ -500,7 +572,9 @@ function lastLayoutSlide(show: Show | undefined): SlideData | undefined {
 }
 
 function slideText(slide: Slide | undefined): string {
-    return slide?.items?.[0]?.lines?.[0]?.text?.[0]?.value || ""
+    const lines = (slide?.items || []).flatMap((item) => item.lines || [])
+    const text = lines.flatMap((line) => (line.text || []).map((part) => part.value || ""))
+    return text.join("\n")
 }
 
 function normalizeLabel(group: string | null | undefined): SongPartLabel | null {
