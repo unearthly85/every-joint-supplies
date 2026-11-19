@@ -74,6 +74,12 @@ export function churchStageLayout(): StageLayout {
     }
 }
 
+/** Puts the church stage layout into a map of stage layouts. A layout the church already has under this id, edited or not, stays exactly as it is. */
+export function ensureChurchStageLayout<T extends { [id: string]: StageLayout }>(layouts: T | null | undefined): T {
+    if (layouts && layouts[CHURCH_STAGE_ID]) return layouts
+    return { ...(layouts || ({} as T)), [CHURCH_STAGE_ID]: churchStageLayout() }
+}
+
 /** The stage extras the operator can switch on and off. */
 export interface StageToggles {
     notes?: boolean

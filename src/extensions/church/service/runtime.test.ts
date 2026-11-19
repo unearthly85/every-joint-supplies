@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { faithCovenantSunday, toStored } from "./model"
 import { setChurchClock } from "./clock"
 import { booth } from "./booth"
+import { CHURCH_STAGE_ID, churchStageLayout } from "../stage/layout"
+import type { StageLayout } from "../../../types/Stage"
 
 const setOutput = vi.fn()
 const openProjectItem = vi.fn()
@@ -13,6 +15,9 @@ const isMainWindow = vi.fn(() => true)
 const groupsSubscribe = vi.fn()
 const groupsSet = vi.fn()
 let mockGroupsValue: object = {}
+const stageShowsSubscribe = vi.fn()
+const stageShowsSet = vi.fn()
+let mockStageShowsValue: { [id: string]: object } = {}
 
 const projects = writable<Record<string, { shows: any[] }>>({})
 const activeProject = writable<string | null>("sunday")
@@ -31,6 +36,10 @@ vi.mock("../../../frontend/stores", () => ({
     groups: {
         subscribe: (run: (value: object) => void) => groupsSubscribe(run),
         set: (value: object) => groupsSet(value)
+    },
+    stageShows: {
+        subscribe: (run: (value: { [id: string]: object }) => void) => stageShowsSubscribe(run),
+        set: (value: { [id: string]: object }) => stageShowsSet(value)
     }
 }))
 vi.mock("../../../frontend/components/helpers/output", () => ({
@@ -61,6 +70,10 @@ function ejsOutput(): TestOutputView | undefined {
     return (globalThis as { __ejsOutput?: () => TestOutputView }).__ejsOutput?.()
 }
 
+function ejsStageLayout(): StageLayout | null | undefined {
+    return (globalThis as { __ejsStageLayout?: () => StageLayout | null }).__ejsStageLayout?.()
+}
+
 beforeEach(async () => {
     setOutput.mockClear()
     openProjectItem.mockClear()
@@ -78,6 +91,13 @@ beforeEach(async () => {
     })
     groupsSet.mockClear()
     mockGroupsValue = {}
+    stageShowsSubscribe.mockReset()
+    stageShowsSubscribe.mockImplementation((run: (value: { [id: string]: object }) => void) => {
+        run(mockStageShowsValue)
+        return () => undefined
+    })
+    stageShowsSet.mockClear()
+    mockStageShowsValue = {}
     showsCache.set({ show1: { settings: { activeLayout: "arrangement" } } })
     outputs.set({})
     playingVideos.set([])
@@ -93,6 +113,7 @@ afterEach(async () => {
     booth.set(null)
     delete (globalThis as { __ejsTestClock?: boolean }).__ejsTestClock
     delete (globalThis as { __ejsOutput?: () => TestOutputView }).__ejsOutput
+    delete (globalThis as { __ejsStageLayout?: () => StageLayout | null }).__ejsStageLayout
     delete (globalThis as { __ejsTick?: () => void }).__ejsTick
 })
 
@@ -280,6 +301,70 @@ describe("handoff", () => {
     })
 })
 
+describe("the Sunday stage layout", () => {
+    beforeEach(() => {
+        projects.set({})
+        activeProject.set(null)
+    })
+
+    it("adds the Sunday stage when the stage list has none", async () => {
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(stageShowsSet).toHaveBeenCalledTimes(1)
+        const next = stageShowsSet.mock.calls[0][0]
+        expect(Object.keys(next)).toEqual([CHURCH_STAGE_ID])
+        expect(next[CHURCH_STAGE_ID]).toEqual(churchStageLayout())
+    })
+
+    it("adds the Sunday stage and keeps the other stages", async () => {
+        mockStageShowsValue = { default: { name: "Main" } }
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(stageShowsSet).toHaveBeenCalledTimes(1)
+        const next = stageShowsSet.mock.calls[0][0]
+        expect(next.default).toEqual({ name: "Main" })
+        expect(next[CHURCH_STAGE_ID]).toEqual(churchStageLayout())
+    })
+
+    it("does not set the stage list when the Sunday stage already exists", async () => {
+        mockStageShowsValue = { [CHURCH_STAGE_ID]: churchStageLayout() }
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(stageShowsSet).not.toHaveBeenCalled()
+    })
+
+    it("leaves a Sunday stage the church edited alone", async () => {
+        const edited = churchStageLayout()
+        edited.name = "Our Sunday stage"
+        edited.settings.color = "#123456"
+        mockStageShowsValue = { [CHURCH_STAGE_ID]: edited }
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(stageShowsSet).not.toHaveBeenCalled()
+    })
+
+    it("does not subscribe to the stage list in an output window", async () => {
+        isMainWindow.mockReturnValue(false)
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(stageShowsSubscribe).not.toHaveBeenCalled()
+        expect(stageShowsSet).not.toHaveBeenCalled()
+    })
+
+    it("unsubscribes from the stage list when the handoff stops", async () => {
+        const unsubscribe = vi.fn()
+        stageShowsSubscribe.mockImplementationOnce((run: (value: { [id: string]: object }) => void) => {
+            run(mockStageShowsValue)
+            return unsubscribe
+        })
+        const { watchChurchHandoff, stopChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(unsubscribe).not.toHaveBeenCalled()
+        stopChurchHandoff()
+        expect(unsubscribe).toHaveBeenCalledTimes(1)
+    })
+})
+
 describe("test output", () => {
     beforeEach(() => {
         ;(globalThis as { __ejsTestClock?: boolean }).__ejsTestClock = true
@@ -292,6 +377,26 @@ describe("test output", () => {
         const { watchChurchHandoff } = await import("./runtime")
         watchChurchHandoff()
         expect(ejsOutput()).toBeUndefined()
+    })
+
+    it("exposes the Sunday stage layout while the test clock is on", async () => {
+        mockStageShowsValue = { [CHURCH_STAGE_ID]: churchStageLayout() }
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(ejsStageLayout()).toEqual(churchStageLayout())
+    })
+
+    it("exposes a null stage layout when the Sunday stage is not in the list", async () => {
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(ejsStageLayout()).toBeNull()
+    })
+
+    it("does not expose the Sunday stage layout while the test clock is off", async () => {
+        ;(globalThis as { __ejsTestClock?: boolean }).__ejsTestClock = false
+        const { watchChurchHandoff } = await import("./runtime")
+        watchChurchHandoff()
+        expect(ejsStageLayout()).toBeUndefined()
     })
 
     it("reports the live slide, background, project index, and playing media", async () => {
