@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Output } from "../../../types/Output"
 import { CHURCH_STAGE_ID } from "./layout"
 import type { Display } from "./screen"
-import { churchStageOutputId, displayInUse, displayLabel, programOutputIds, stageOutputPatch, stageScreenChoices } from "./screen"
+import { churchStageOutputId, displayInUse, displayLabel, listDisplays, programOutputIds, stageOutputPatch, stageScreenChoices } from "./screen"
 
 function display(id: number | string, width = 1920, height = 1080, x = 0, y = 0): Display {
     return { id, bounds: { x, y, width, height } }
@@ -188,5 +188,40 @@ describe("naming a screen in plain words", () => {
     it("counts the screen when it has no label", () => {
         expect(displayLabel(A, 0)).toBe("Screen 1 (1920×1080)")
         expect(displayLabel(B, 1)).toBe("Screen 2 (1280×720)")
+    })
+})
+
+describe("listing the screens", () => {
+    afterEach(() => {
+        delete (globalThis as { __ejsTestClock?: boolean }).__ejsTestClock
+        delete (globalThis as { __ejsFakeDisplays?: Display[] }).__ejsFakeDisplays
+    })
+
+    it("returns the fake screens when the test clock is on and a fake list is set", async () => {
+        ;(globalThis as { __ejsTestClock?: boolean }).__ejsTestClock = true
+        const fake = [display(9, 1024, 768, 500, 50)]
+        ;(globalThis as { __ejsFakeDisplays?: Display[] }).__ejsFakeDisplays = fake
+        const request = vi.fn(async () => [A, B])
+        expect(await listDisplays(request)).toEqual(fake)
+        expect(request).not.toHaveBeenCalled()
+    })
+
+    it("asks for the real screens when the test clock is on but no fake list is set", async () => {
+        ;(globalThis as { __ejsTestClock?: boolean }).__ejsTestClock = true
+        const request = vi.fn(async () => [A, B])
+        expect(await listDisplays(request)).toEqual([A, B])
+        expect(request).toHaveBeenCalledTimes(1)
+    })
+
+    it("asks for the real screens when the test clock is off, even with a fake list set", async () => {
+        ;(globalThis as { __ejsTestClock?: boolean }).__ejsTestClock = false
+        ;(globalThis as { __ejsFakeDisplays?: Display[] }).__ejsFakeDisplays = [display(9)]
+        const request = vi.fn(async () => [A, B])
+        expect(await listDisplays(request)).toEqual([A, B])
+        expect(request).toHaveBeenCalledTimes(1)
+    })
+
+    it("returns nothing when the request comes back empty", async () => {
+        expect(await listDisplays(async () => undefined)).toEqual([])
     })
 })
