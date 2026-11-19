@@ -24,6 +24,10 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `stage/screen.ts` works out which screens are free for the stage screen, so the stage can never take over the program output (the HDMI going to the ATEM).
 
+## Program output
+
+`program/preset.ts` is the preset for the clean full-screen program output (the HDMI going to the ATEM Mini) and works out which screens are free for it, so the program can never take over the booth or the stage screen.
+
 ## Placeholder icon
 
 `scripts/placeholder-icon.py` draws `public/icon.png`, `public/icon.ico`, and `src/server/icon.png`. Replace those files when a real icon exists. No need to change the name config to do that.
