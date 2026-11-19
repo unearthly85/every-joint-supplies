@@ -1,8 +1,11 @@
 <script lang="ts">
     import { onMount } from "svelte"
+    import { get } from "svelte/store"
     import { requestMain } from "../../frontend/IPC/main"
     import { outputs } from "../../frontend/stores"
     import { Main } from "../../types/IPC/Main"
+    import { disableKeyable, enableKeyable, publishKeyableHooks } from "./keyable/apply"
+    import { churchKeyableOutputId } from "./keyable/preset"
     import { publishProgramScreenHooks, useScreenForProgram } from "./program/apply"
     import { programScreenChoices } from "./program/preset"
     import { displayLabel, listDisplays, type Display } from "./stage/screen"
@@ -11,6 +14,10 @@
     let loaded = false
     let on = false
     let chosenId = ""
+    let blocked = false
+
+    // Read the saved keyable switch once, when the panel mounts. Closing and reopening the panel remounts this component, so the saved state comes back here.
+    let keyable = churchKeyableOutputId(get(outputs)) !== null
 
     $: choices = programScreenChoices(displays, $outputs)
     $: if (!chosenId && choices.length > 0) chosenId = String(choices[0].id)
@@ -18,6 +25,7 @@
 
     onMount(async () => {
         publishProgramScreenHooks()
+        publishKeyableHooks()
         displays = await listDisplays(() => requestMain(Main.GET_DISPLAYS))
         loaded = true
     })
@@ -26,6 +34,23 @@
         if (!chosen) return
         useScreenForProgram(chosen)
         on = true
+    }
+
+    function toggleKeyable(next: boolean) {
+        keyable = next
+        if (next) {
+            const free = programScreenChoices(displays, get(outputs))
+            if (free.length === 0) {
+                keyable = false
+                blocked = true
+                return
+            }
+            blocked = false
+            enableKeyable(free[0])
+        } else {
+            blocked = false
+            disableKeyable()
+        }
     }
 </script>
 
@@ -47,6 +72,14 @@
         <button type="button" data-testid="use-program-screen" on:click={useChosen}>Use this screen for the program</button>
     {/if}
 </fieldset>
+
+<label class="keyable-toggle">
+    <input type="checkbox" data-testid="keyable-toggle" checked={keyable} on:change={(e) => toggleKeyable(e.currentTarget.checked)} />
+    Keyable lower-thirds (for the ATEM)
+</label>
+{#if blocked}
+    <p class="keyable-no-screen" data-testid="keyable-no-screen">Connect another screen to use the keyable preset.</p>
+{/if}
 
 <style>
     .program-screen {
@@ -93,5 +126,26 @@
         border: 1px solid var(--primary-lighter);
         border-radius: 8px;
         cursor: pointer;
+    }
+
+    .keyable-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .keyable-toggle input {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+        accent-color: var(--primary-darker);
+    }
+
+    .keyable-no-screen {
+        margin: 8px 0 0;
+        color: var(--text);
     }
 </style>
