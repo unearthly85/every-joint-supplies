@@ -10,6 +10,7 @@
     import { activeProject, projects, shows, showsCache, statusIndicator } from "../../frontend/stores"
     import { save } from "../../frontend/utils/save"
     import { canonicalClock, countdownLine, FAITH_COVENANT_SUNDAY, faithCovenantSunday, formatClock, nextSunday, parseClock, resolveCountdownSeconds, toStored, type TimingMode } from "./service/model"
+    import ProgramScreen from "./ProgramScreen.svelte"
     import StageScreen from "./StageScreen.svelte"
 
     let serviceDate = nextSunday()
@@ -139,45 +140,48 @@
                 <h1>New Sunday</h1>
                 <button type="button" data-testid="close-sunday" on:click={() => sundayPanelOpen.set(false)}>Close</button>
             </header>
-            <p>Faith Covenant Sunday: pre-service, a countdown, announcements, scripture, and a song.</p>
+            <div class="body">
+                <p>Faith Covenant Sunday: pre-service, a countdown, announcements, scripture, and a song.</p>
 
-            <label>
-                Service date
-                <input data-testid="service-date" type="date" bind:value={serviceDate} />
-            </label>
-            <label>
-                Advertised time
-                <input data-testid="advertised-time" type="text" bind:value={advertisedField} on:change={(event) => commitTime("advertised", event.currentTarget.value)} />
-            </label>
-            <label>
-                Start time
-                <input data-testid="start-time" type="text" bind:value={startField} on:change={(event) => commitTime("start", event.currentTarget.value)} />
-            </label>
-            <label>
-                Countdown video
-                <input data-testid="countdown-video" type="file" accept="video/*" on:change={pickCountdownVideo} />
-                {#if countdownVideoLabel}<span>{countdownVideoLabel}</span>{/if}
-            </label>
-            <div class="length">
-                <span>Countdown length</span>
                 <label>
-                    <input data-testid="countdown-minutes" type="number" min="0" bind:value={countdownMinutes} />
-                    minutes
+                    Service date
+                    <input data-testid="service-date" type="date" bind:value={serviceDate} />
                 </label>
                 <label>
-                    <input data-testid="countdown-seconds" type="number" min="0" bind:value={countdownSeconds} />
-                    seconds
+                    Advertised time
+                    <input data-testid="advertised-time" type="text" bind:value={advertisedField} on:change={(event) => commitTime("advertised", event.currentTarget.value)} />
                 </label>
+                <label>
+                    Start time
+                    <input data-testid="start-time" type="text" bind:value={startField} on:change={(event) => commitTime("start", event.currentTarget.value)} />
+                </label>
+                <label>
+                    Countdown video
+                    <input data-testid="countdown-video" type="file" accept="video/*" on:change={pickCountdownVideo} />
+                    {#if countdownVideoLabel}<span>{countdownVideoLabel}</span>{/if}
+                </label>
+                <div class="length">
+                    <span>Countdown length</span>
+                    <label>
+                        <input data-testid="countdown-minutes" type="number" min="0" bind:value={countdownMinutes} />
+                        minutes
+                    </label>
+                    <label>
+                        <input data-testid="countdown-seconds" type="number" min="0" bind:value={countdownSeconds} />
+                        seconds
+                    </label>
+                </div>
+                <label class="check">
+                    <input data-testid="countdown-finishes-at-start" type="checkbox" bind:checked={finishesAtStart} />
+                    Countdown finishes at the start time
+                </label>
+
+                <p data-testid="countdown-line">{line}</p>
+                {#if problem}<p class="problem" data-testid="sunday-problem">{problem}</p>{/if}
+
+                <StageScreen />
+                <ProgramScreen />
             </div>
-            <label class="check">
-                <input data-testid="countdown-finishes-at-start" type="checkbox" bind:checked={finishesAtStart} />
-                Countdown finishes at the start time
-            </label>
-
-            <p data-testid="countdown-line">{line}</p>
-            {#if problem}<p class="problem" data-testid="sunday-problem">{problem}</p>{/if}
-
-            <StageScreen />
 
             <button data-testid="start-sunday" type="button" on:click={startSunday}>Start this Sunday</button>
         </section>
@@ -196,8 +200,11 @@
     }
 
     section {
+        display: flex;
+        flex-direction: column;
         width: 440px;
         max-width: calc(100% - 32px);
+        max-height: calc(100vh - 32px);
         padding: 16px;
         background: var(--primary);
         color: var(--text);
@@ -208,8 +215,16 @@
         line-height: 1.4;
     }
 
+    /* On a small screen the form scrolls, but the title and the Start button stay put. */
+    .body {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
     header {
         display: flex;
+        flex-shrink: 0;
         align-items: center;
         justify-content: space-between;
         gap: 12px;
@@ -279,6 +294,7 @@
     }
 
     button[data-testid="start-sunday"] {
+        flex-shrink: 0;
         width: 100%;
         margin-top: 4px;
         padding: 12px;
