@@ -49,7 +49,7 @@
         "test": "npm-run-all -s test:unit test:playwright test:format test:svelte",
         "test:unit": "vitest run --config config/testing/vitest.config.ts",
         "test:playwright": "npx playwright test --config config/testing/playwright.config.ts",
-        "test:e2e:sunday": "npx playwright test --config config/testing/playwright.config.ts church-present.test.ts church-handoff.test.ts church-order.test.ts church-stage.test.ts",
+        "test:e2e:sunday": "npx playwright test --config config/testing/playwright.config.ts church-present.test.ts church-handoff.test.ts church-order.test.ts church-stage.test.ts church-program.test.ts",
         "test:outputs": "npm run build && npx playwright test --config config/testing/outputs/playwright.config.ts",
         "test:format": "npx prettier --config config/formatting/.prettierrc.yaml --check src scripts",
         "test:svelte": "svelte-check",

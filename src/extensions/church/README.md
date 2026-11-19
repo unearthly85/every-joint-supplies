@@ -26,7 +26,7 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 ## Program output
 
-`program/preset.ts` is the preset for the clean full-screen program output (the HDMI going to the ATEM Mini) and works out which screens are free for it, so the program can never take over the booth or the stage screen.
+`program/preset.ts` is the preset for the clean full-screen program output (the HDMI going to the ATEM Mini) and works out which screens are free for it, so the program can never take over the booth or the stage screen. `program/apply.ts` puts the program on the chosen screen with one click, and `ProgramScreen.svelte` is the panel section that offers it.
 
 ## Placeholder icon
 

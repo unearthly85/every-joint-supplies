@@ -10,6 +10,7 @@
     import { activeProject, projects, shows, showsCache, statusIndicator } from "../../frontend/stores"
     import { save } from "../../frontend/utils/save"
     import { canonicalClock, countdownLine, FAITH_COVENANT_SUNDAY, faithCovenantSunday, formatClock, nextSunday, parseClock, resolveCountdownSeconds, toStored, type TimingMode } from "./service/model"
+    import ProgramScreen from "./ProgramScreen.svelte"
     import StageScreen from "./StageScreen.svelte"
 
     let serviceDate = nextSunday()
@@ -178,6 +179,7 @@
             {#if problem}<p class="problem" data-testid="sunday-problem">{problem}</p>{/if}
 
             <StageScreen />
+            <ProgramScreen />
 
             <button data-testid="start-sunday" type="button" on:click={startSunday}>Start this Sunday</button>
         </section>
