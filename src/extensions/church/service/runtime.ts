@@ -3,15 +3,18 @@ import { getAllActiveOutputIds, setOutput } from "../../../frontend/components/h
 import { getMedia } from "../../../frontend/components/helpers/media"
 import { AudioPlayer } from "../../../frontend/audio/audioPlayer"
 import { openProjectItem } from "../../../frontend/components/show/project"
-import { activeProject, groups, outputs, playingVideos, projects, showsCache } from "../../../frontend/stores"
+import { activeProject, groups, outputs, playingVideos, projects, showsCache, stageShows } from "../../../frontend/stores"
 import { ensureChurchGroups } from "./arrangement"
 import { isMainWindow } from "../../../frontend/utils/common"
 import { testClockEnabled } from "./clock"
 import { churchTick, onChurchAdvance } from "./session"
+import { CHURCH_STAGE_ID, ensureChurchStageLayout } from "../stage/layout"
+import type { StageLayout } from "../../../types/Stage"
 
 let started = false
 let timer: ReturnType<typeof setTimeout> | null = null
 let stopGroups: (() => void) | null = null
+let stopStage: (() => void) | null = null
 
 /** Put the Sunday item on the output the same way a click does. */
 export async function showLiveItem(projectId: string, index: number) {
@@ -51,6 +54,7 @@ export function watchChurchHandoff() {
     const tick = () => {
         if (isMainWindow()) churchTick()
         publishTestOutput()
+        publishTestStageLayout()
     }
     if (testClockEnabled()) (globalThis as { __ejsTick?: () => void }).__ejsTick = tick
     // Settings load replaces `groups` after startup. Keep listening so tag gets T
@@ -61,7 +65,16 @@ export function watchChurchHandoff() {
             if (next !== value) groups.set(next)
         })
     }
+    // Settings load replaces `stageShows` after startup, too. Keep listening so the
+    // Sunday stage appears once, and never overwrites one the church edited.
+    if (isMainWindow() && !stopStage) {
+        stopStage = stageShows.subscribe((value) => {
+            const next = ensureChurchStageLayout(value)
+            if (next !== value) stageShows.set(next)
+        })
+    }
     publishTestOutput()
+    publishTestStageLayout()
     const loop = () => {
         tick()
         timer = setTimeout(loop, 400)
@@ -74,6 +87,8 @@ export function stopChurchHandoff() {
     timer = null
     stopGroups?.()
     stopGroups = null
+    stopStage?.()
+    stopStage = null
     started = false
 }
 
@@ -92,6 +107,13 @@ function publishTestOutput() {
     if (!testClockEnabled()) return
     const page = globalThis as { __ejsOutput?: () => TestOutput }
     page.__ejsOutput = testOutput
+}
+
+/** The Sunday stage layout, readable only when the test clock is on. */
+function publishTestStageLayout() {
+    if (!testClockEnabled()) return
+    const page = globalThis as { __ejsStageLayout?: () => StageLayout | null }
+    page.__ejsStageLayout = () => get(stageShows)[CHURCH_STAGE_ID] || null
 }
 
 interface TestOutput {

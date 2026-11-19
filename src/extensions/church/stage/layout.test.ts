@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { CHURCH_STAGE_ID, CHURCH_STAGE_NAME, churchStageLayout, readStageToggles, setStageToggles } from "./layout"
+import { CHURCH_STAGE_ID, CHURCH_STAGE_NAME, churchStageLayout, ensureChurchStageLayout, readStageToggles, setStageToggles } from "./layout"
 
 const TYPE_WORDS = ["slide", "notes", "clock", "timer"]
 
@@ -80,6 +80,42 @@ describe("the default stage layout", () => {
         first.settings.color = "#123456"
         expect(second.items.notes.enabled).toBe(false)
         expect(second.settings.color).toBe("#000000")
+    })
+})
+
+describe("adding the church stage to a stage list", () => {
+    it("adds the church stage to an empty list", () => {
+        const next = ensureChurchStageLayout({})
+        expect(Object.keys(next)).toEqual([CHURCH_STAGE_ID])
+        expect(next[CHURCH_STAGE_ID]).toEqual(churchStageLayout())
+    })
+
+    it("adds the church stage and keeps the other stages", () => {
+        const other = { name: "Main", settings: { background: false }, items: {} }
+        const next = ensureChurchStageLayout({ default: other })
+        expect(next.default).toBe(other)
+        expect(next[CHURCH_STAGE_ID]).toEqual(churchStageLayout())
+    })
+
+    it("returns the same list when the church stage is already there", () => {
+        const layouts = { [CHURCH_STAGE_ID]: churchStageLayout() }
+        expect(ensureChurchStageLayout(layouts)).toBe(layouts)
+    })
+
+    it("returns the same list when the church has edited its stage", () => {
+        const edited = churchStageLayout()
+        edited.name = "Our Sunday stage"
+        edited.settings.color = "#123456"
+        const layouts = { [CHURCH_STAGE_ID]: edited }
+        const next = ensureChurchStageLayout(layouts)
+        expect(next).toBe(layouts)
+        expect(next[CHURCH_STAGE_ID].name).toBe("Our Sunday stage")
+        expect(next[CHURCH_STAGE_ID].settings.color).toBe("#123456")
+    })
+
+    it("treats a missing list as empty", () => {
+        expect(Object.keys(ensureChurchStageLayout(undefined))).toEqual([CHURCH_STAGE_ID])
+        expect(Object.keys(ensureChurchStageLayout(null))).toEqual([CHURCH_STAGE_ID])
     })
 })
 
