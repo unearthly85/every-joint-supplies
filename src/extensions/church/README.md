@@ -28,6 +28,8 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `program/preset.ts` is the preset for the clean full-screen program output (the HDMI going to the ATEM Mini) and works out which screens are free for it, so the program can never take over the booth or the stage screen. `program/apply.ts` puts the program on the chosen screen with one click, and `ProgramScreen.svelte` is the panel section that offers it.
 
+`keyable/preset.ts` is the preset for the keyable lower-thirds output: the slide at its normal position on a solid key colour (green screen or black), so a keyer can cut everything but the text out.
+
 ## Placeholder icon
 
 `scripts/placeholder-icon.py` draws `public/icon.png`, `public/icon.ico`, and `src/server/icon.png`. Replace those files when a real icon exists. No need to change the name config to do that.
