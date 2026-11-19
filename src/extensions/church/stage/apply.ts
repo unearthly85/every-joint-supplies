@@ -1,9 +1,10 @@
 import { get } from "svelte/store"
 import { enableStageOutput, toggleOutputs } from "../../../frontend/components/helpers/output"
-import { activeRename, outputs } from "../../../frontend/stores"
+import { activeRename, outputs, stageShows } from "../../../frontend/stores"
 import { send } from "../../../frontend/utils/request"
 import { OUTPUT } from "../../../types/Channels"
 import { testClockEnabled } from "../service/clock"
+import { CHURCH_STAGE_ID, setStageToggles, type StageToggles } from "./layout"
 import { churchStageOutputId, programOutputIds, stageOutputPatch, type Display } from "./screen"
 
 /** Puts the church stage on the chosen screen. Reuses the stage output when one exists, creates it when none does, and never touches a program output. Returns the stage output id. */
@@ -22,6 +23,11 @@ export function useScreenForStage(display: Display): string {
     const created = enableStageOutput(stageOutputPatch(display))
     activeRename.set(null)
     return created
+}
+
+/** Changes the notes, chords, and message switches on the church stage layout only. Other stage layouts stay exactly as they are, and a missing church layout is a no-op. */
+export function updateStageToggles(toggles: StageToggles) {
+    stageShows.update((all) => (all[CHURCH_STAGE_ID] ? { ...all, [CHURCH_STAGE_ID]: setStageToggles(all[CHURCH_STAGE_ID], toggles) } : all))
 }
 
 /** The stage output and the program outputs, readable from the e2e tests. Only while the test clock is on. */
