@@ -1,4 +1,5 @@
 import type { Output } from "../../../types/Output"
+import { testClockEnabled } from "../service/clock"
 import { CHURCH_STAGE_ID } from "./layout"
 
 /** A screen as FreeShow reports it (Electron's screen API, GET_DISPLAYS). */
@@ -7,6 +8,13 @@ export interface Display {
     bounds: { x: number; y: number; width: number; height: number }
     internal?: boolean
     label?: string
+}
+
+/** The screens to offer. In a test build a test can stand in for the real screens; otherwise the app's screen list, or nothing. */
+export async function listDisplays(request: () => Promise<Display[] | undefined>): Promise<Display[]> {
+    const fake = (globalThis as { __ejsFakeDisplays?: Display[] }).__ejsFakeDisplays
+    if (testClockEnabled() && Array.isArray(fake)) return fake
+    return (await request()) || []
 }
 
 /** The ids of the outputs that show the program on a screen: enabled, not stage outputs, and not network-only. Sorted by id so the result is stable. */
