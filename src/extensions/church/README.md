@@ -22,6 +22,8 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
 
+`stage/screen.ts` works out which screens are free for the stage screen, so the stage can never take over the program output (the HDMI going to the ATEM).
+
 ## Placeholder icon
 
 `scripts/placeholder-icon.py` draws `public/icon.png`, `public/icon.ico`, and `src/server/icon.png`. Replace those files when a real icon exists. No need to change the name config to do that.
