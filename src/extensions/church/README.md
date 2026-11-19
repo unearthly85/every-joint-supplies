@@ -26,7 +26,7 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 ## Program output
 
-`program/preset.ts` is the preset for the clean full-screen program output (the HDMI going to the ATEM Mini) and works out which screens are free for it, so the program can never take over the booth or the stage screen. `program/apply.ts` puts the program on the chosen screen with one click, and `ProgramScreen.svelte` is the panel section that offers it.
+`program/preset.ts` is the preset for the clean full-screen program output (the HDMI going to the ATEM Mini) and works out which screens are free for it, so the program can never take over the booth or the stage screen. `program/apply.ts` puts the program on the chosen screen with one click, and `ProgramScreen.svelte` is the panel section that offers it. `program/audio.ts` chooses which output device the program audio (the countdown and the songs) plays through: the system default (the ATEM's embedded HDMI audio) or a specific device such as the PA system.
 
 `keyable/preset.ts` is the preset for the keyable lower-thirds output: the slide at its normal position on a solid key colour (green screen or black), so a keyer can cut everything but the text out. `keyable/apply.ts` turns that preset on and off from one switch in the program screen section: it makes sure the keyable style exists, puts the keyable output on the first free screen, and removes the output when the switch is off.
 

@@ -6,6 +6,7 @@
     import { Main } from "../../types/IPC/Main"
     import { disableKeyable, enableKeyable, publishKeyableHooks } from "./keyable/apply"
     import { churchKeyableOutputId } from "./keyable/preset"
+    import { audioOutputChoices, currentAudioOutputDevice, publishAudioHooks, setAudioOutputDevice } from "./program/audio"
     import { publishProgramScreenHooks, useScreenForProgram } from "./program/apply"
     import { programScreenChoices } from "./program/preset"
     import { displayLabel, listDisplays, type Display } from "./stage/screen"
@@ -19,6 +20,10 @@
     // Read the saved keyable switch once, when the panel mounts. Closing and reopening the panel remounts this component, so the saved state comes back here.
     let keyable = churchKeyableOutputId(get(outputs)) !== null
 
+    // Read the saved audio out device once, when the panel mounts.
+    let audioDevice = currentAudioOutputDevice()
+    let audioChoices: { value: string; label: string }[] = []
+
     $: choices = programScreenChoices(displays, $outputs)
     $: if (!chosenId && choices.length > 0) chosenId = String(choices[0].id)
     $: chosen = choices.find((item) => String(item.id) === chosenId) || choices[0] || null
@@ -26,8 +31,10 @@
     onMount(async () => {
         publishProgramScreenHooks()
         publishKeyableHooks()
+        publishAudioHooks()
         displays = await listDisplays(() => requestMain(Main.GET_DISPLAYS))
         loaded = true
+        audioChoices = await audioOutputChoices()
     })
 
     function useChosen() {
@@ -72,6 +79,22 @@
         <button type="button" data-testid="use-program-screen" on:click={useChosen}>Use this screen for the program</button>
     {/if}
 </fieldset>
+
+<label class="audio-out">
+    Audio out
+    <select
+        data-testid="audio-device"
+        value={audioDevice}
+        on:change={(e) => {
+            audioDevice = e.currentTarget.value
+            setAudioOutputDevice(audioDevice)
+        }}
+    >
+        {#each audioChoices as choice}
+            <option value={choice.value}>{choice.label}</option>
+        {/each}
+    </select>
+</label>
 
 <label class="keyable-toggle">
     <input type="checkbox" data-testid="keyable-toggle" checked={keyable} on:change={(e) => toggleKeyable(e.currentTarget.checked)} />
@@ -126,6 +149,24 @@
         border: 1px solid var(--primary-lighter);
         border-radius: 8px;
         cursor: pointer;
+    }
+
+    .audio-out {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 12px 0 0;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .audio-out select {
+        font-size: 18px;
+        padding: 8px;
+        color: var(--text);
+        background: var(--primary-darker);
+        border: 1px solid var(--primary-lighter);
+        border-radius: 8px;
     }
 
     .keyable-toggle {
