@@ -1,7 +1,8 @@
 import { get, writable } from "svelte/store"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Output } from "../../../types/Output"
-import { CHURCH_STAGE_ID } from "./layout"
+import type { StageLayouts } from "../../../types/Stage"
+import { CHURCH_STAGE_ID, churchStageLayout } from "./layout"
 import type { Display } from "./screen"
 
 const enableStageOutput = vi.fn()
@@ -9,10 +10,12 @@ const toggleOutputs = vi.fn()
 const send = vi.fn()
 const outputs = writable<{ [id: string]: Output }>({})
 const activeRename = writable<string | null>(null)
+const stageShows = writable<StageLayouts>({})
 
 vi.mock("../../../frontend/stores", () => ({
     outputs,
-    activeRename
+    activeRename,
+    stageShows
 }))
 vi.mock("../../../frontend/components/helpers/output", () => ({
     enableStageOutput: (...args: unknown[]) => enableStageOutput(...args),
@@ -57,6 +60,7 @@ beforeEach(() => {
     send.mockReset()
     outputs.set({})
     activeRename.set(null)
+    stageShows.set({})
 })
 
 afterEach(() => {
@@ -131,6 +135,34 @@ describe("putting the stage on a screen", () => {
         expect(get(outputs)["program"]).toEqual(program)
         useScreenForStage(display(3, { x: 2560, y: 0, width: 2560, height: 1440 }))
         expect(get(outputs)["program"]).toEqual(program)
+    })
+})
+
+describe("changing the stage switches", () => {
+    it("updates only the church layout and leaves the other layouts alone", async () => {
+        const other = churchStageLayout()
+        other.name = "Main"
+        stageShows.set({ [CHURCH_STAGE_ID]: churchStageLayout(), other })
+        const { updateStageToggles } = await import("./apply")
+        updateStageToggles({ notes: true, message: true, messageText: "Two more minutes" })
+        const all = get(stageShows)
+        expect(Object.keys(all)).toEqual([CHURCH_STAGE_ID, "other"])
+        expect(all[CHURCH_STAGE_ID].items.notes.enabled).toBe(true)
+        expect(all[CHURCH_STAGE_ID].items.stageMessage.enabled).toBe(true)
+        expect(all[CHURCH_STAGE_ID].items.stageMessage.lines?.[0]?.text?.[0]?.value).toBe("Two more minutes")
+        expect(all[CHURCH_STAGE_ID].items.currentText.chords?.enabled).toBe(false)
+        expect(all.other).toBe(other)
+    })
+
+    it("does nothing when the church layout is missing", async () => {
+        const other = churchStageLayout()
+        other.name = "Main"
+        stageShows.set({ other })
+        const before = get(stageShows)
+        const { updateStageToggles } = await import("./apply")
+        updateStageToggles({ notes: true, chords: true, message: true, messageText: "Hi" })
+        expect(get(stageShows)).toBe(before)
+        expect(get(stageShows)).toEqual({ other })
     })
 })
 

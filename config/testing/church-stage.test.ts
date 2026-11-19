@@ -81,6 +81,39 @@ test("with only one screen, the section says to connect a second screen", async 
     }
 })
 
+test("a volunteer switches notes, chords, and the stage message on and off", async () => {
+    const launched = await launchChurchApp()
+    const window = launched.window
+    try {
+        await window.getByTestId("open-new-sunday").waitFor({ timeout: 60_000 })
+
+        await window.getByTestId("open-new-sunday").click()
+        await expect(window.getByTestId("new-sunday")).toBeVisible()
+
+        await window.getByTestId("stage-show-notes").check()
+        await window.getByTestId("stage-show-message").check()
+        await window.getByTestId("stage-message-text").fill("Two more minutes")
+        await window.getByTestId("stage-message-text").press("Tab")
+
+        await expect.poll(async () => stageToggles(window), { timeout: 10_000 }).toEqual({ notes: true, chords: false, message: true, messageText: "Two more minutes" })
+
+        await window.getByTestId("stage-show-notes").uncheck()
+        await expect.poll(async () => stageToggles(window), { timeout: 10_000 }).toEqual({ notes: false, chords: false, message: true, messageText: "Two more minutes" })
+
+        await window.getByTestId("close-sunday").click()
+        await expect(window.getByTestId("new-sunday")).toBeHidden()
+
+        await window.getByTestId("open-new-sunday").click()
+        await expect(window.getByTestId("new-sunday")).toBeVisible()
+        await expect(window.getByTestId("stage-show-notes")).not.toBeChecked()
+        await expect(window.getByTestId("stage-show-chords")).not.toBeChecked()
+        await expect(window.getByTestId("stage-show-message")).toBeChecked()
+        await expect(window.getByTestId("stage-message-text")).toHaveValue("Two more minutes")
+    } finally {
+        await launched.close()
+    }
+})
+
 async function fakeDisplays(window: Page, displays: { id: number; bounds: Bounds }[]) {
     await window.evaluate((list) => {
         ;(globalThis as { __ejsFakeDisplays?: unknown }).__ejsFakeDisplays = list
@@ -106,5 +139,31 @@ async function stageLayoutItems(window: Page): Promise<string[] | null> {
         const page = window as unknown as { __ejsStageLayout?: () => { items?: { [key: string]: unknown } } | null }
         const layout = page.__ejsStageLayout?.()
         return layout ? Object.keys(layout.items || {}) : null
+    })
+}
+
+interface StageTogglesView {
+    notes: boolean
+    chords: boolean
+    message: boolean
+    messageText: string
+}
+
+async function stageToggles(window: Page): Promise<StageTogglesView | null> {
+    return window.evaluate(() => {
+        const page = window as unknown as {
+            __ejsStageLayout?: () => {
+                items?: { [key: string]: { enabled?: boolean; chords?: { enabled?: boolean }; lines?: { text?: { value?: string }[] }[] } }
+            } | null
+        }
+        const layout = page.__ejsStageLayout?.()
+        if (!layout) return null
+        const message = layout.items?.stageMessage
+        return {
+            notes: layout.items?.notes?.enabled === true,
+            chords: layout.items?.currentText?.chords?.enabled === true,
+            message: message?.enabled === true,
+            messageText: message?.lines?.[0]?.text?.[0]?.value ?? ""
+        }
     })
 }
