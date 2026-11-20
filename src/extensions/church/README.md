@@ -22,6 +22,8 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `importer/labels.ts` is the detection core of the assisted lyric importer (P0-08): it decides which pasted lines are section labels (VERSE 1, Chorus, V, {Custom}, [Verse]) and which are credits (CCLI, author, copyright, public domain), and it proposes a title. Pure text in, text out; the preview UI is a later step.
 
+`importer/draft.ts` builds on that: it turns a pasted text into a reviewable draft (title, parts, credits) and builds the FreeShow library show from it — parts as slides, the default arrangement as the layout. Pure TypeScript, no stores, no UI.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
