@@ -24,6 +24,10 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `importer/draft.ts` builds on that: it turns a pasted text into a reviewable draft (title, parts, credits) and builds the FreeShow library show from it — parts as slides, the default arrangement as the layout. Pure TypeScript, no stores, no UI.
 
+`importer/formats.ts` adds the bulk file-format parsers on top of the same draft model: OpenLyrics XML (one or more `<SONG>` blocks), ChordPro (`{c:}` markers, `start_of_`/`end_of_` pairs, `%` metadata, inline chords stripped), and CCLI SongSelect downloads (`.usr` in the layout OpenLP's CCLI importer documents, `.txt`/`.md` through the pasted-text parser). `parseFile` picks the parser from the file name. Pure TypeScript, no stores, no UI.
+
+`importer/pdf.ts` extracts the selectable text from a PDF with the `pdfjs-dist` legacy build (the same worker the upstream PDF preview uses) and decides whether the result has enough words to be worth importing; when a PDF is image-only it points the volunteer at copying the text from Proclaim instead.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
