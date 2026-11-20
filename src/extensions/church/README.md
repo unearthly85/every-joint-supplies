@@ -28,6 +28,10 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `importer/pdf.ts` extracts the selectable text from a PDF with the `pdfjs-dist` legacy build (the same worker the upstream PDF preview uses) and decides whether the result has enough words to be worth importing; when a PDF is image-only it points the volunteer at copying the text from Proclaim instead.
 
+`importer/save.ts` turns a reviewed draft into a library song: `findSameTitle` looks up an existing song with the same name (case-insensitive, trimmed) and `buildLibraryShow` builds the FreeShow show for a draft with the arrangement the reviewer left, under a fresh id.
+
+`importer/SongImport.svelte` is the review screen in the New Sunday panel: the volunteer pastes or drops the lyrics, checks the detected parts and labels, and saves the song to the library — or, when a song with the same name already exists, saves it as a new song or replaces the saved one in place.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
