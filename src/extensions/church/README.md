@@ -30,7 +30,9 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `importer/save.ts` turns a reviewed draft into a library song: `findSameTitle` looks up an existing song with the same name (case-insensitive, trimmed) and `buildLibraryShow` builds the FreeShow show for a draft with the arrangement the reviewer left, under a fresh id.
 
-`importer/SongImport.svelte` is the review screen in the New Sunday panel: the volunteer pastes or drops the lyrics, checks the detected parts and labels, and saves the song to the library — or, when a song with the same name already exists, saves it as a new song or replaces the saved one in place.
+`importer/bulk.ts` reads the picked files for the songs-found list (P0-08 s5): a PDF goes through the text guard first and then the pasted-text parser, everything else goes through `parseFile` (an OpenLyrics XML may yield several songs), and a file that yields nothing becomes one failed row with a plain reason. One file failing never stops the rest. It also builds the plain-language report line after an import. Pure TypeScript, no stores, no UI.
+
+`importer/SongImport.svelte` is the review screen in the New Sunday panel: the volunteer pastes or drops the lyrics, checks the detected parts and labels, and saves the song to the library — or, when a song with the same name already exists, saves it as a new song or replaces the saved one in place. Several files at once (file picker or drag-and-drop) fill a songs-found list instead: one row per song with a check box, a plain status, and an Open button that loads the song into the same preview-and-fix view (saving it returns to the list with the song marked done). "Import selected" saves the checked songs, skips same-title songs instead of overwriting them, and reports what was imported, skipped, and failed. A single text, Markdown, or PDF file keeps the one-song flow.
 
 ## Stage display
 

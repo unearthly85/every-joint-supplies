@@ -5,9 +5,12 @@
     import { shows, showsCache, statusIndicator } from "../../../frontend/stores"
     import { save } from "../../../frontend/utils/save"
     import type { Show } from "../../../types/Show"
+    import { foundSongsFromFiles, importReport, type FoundSong } from "./bulk"
     import { defaultArrangement, parsePastedText, type SongDraft } from "./draft"
     import { extractPdfText, importableText } from "./pdf"
     import { buildLibraryShow, findSameTitle } from "./save"
+
+    type SongRow = FoundSong & { checked: boolean; done: boolean; arrangement: string[] }
 
     const dispatch = createEventDispatcher()
 
@@ -30,6 +33,9 @@
     let duplicate: { id: string; name: string } | null = null
     let done = ""
     let saving = false
+    let songs: SongRow[] = []
+    let openIndex: number | null = null
+    let report = ""
 
     function labelFor(index: number): string {
         const label = partLabels[index] || "verse"
@@ -123,6 +129,104 @@
         parseCount += 1
     }
 
+    const SINGLE_FILE_EXTS = new Set(["txt", "md", "pdf"])
+
+    function extOf(name: string): string {
+        return name.toLowerCase().split(".").pop() ?? ""
+    }
+
+    async function handleFiles(files: File[]) {
+        if (files.length === 0) return
+        // A single text file keeps the one-song flow: the volunteer clicks Import as before.
+        if (files.length === 1 && songs.length === 0 && SINGLE_FILE_EXTS.has(extOf(files[0].name))) {
+            pdfProblem = ""
+            problem = ""
+            return
+        }
+        const found = await foundSongsFromFiles(files)
+        songs = songs.concat(found.map((song) => ({ ...song, checked: song.ready, done: false, arrangement: song.draft ? defaultArrangement(song.draft) : [] })))
+        report = ""
+    }
+
+    function onFilePick(event: Event) {
+        const files = Array.from((event.currentTarget as HTMLInputElement).files || [])
+        void handleFiles(files)
+    }
+
+    function onDrop(event: DragEvent) {
+        event.preventDefault()
+        void handleFiles(Array.from(event.dataTransfer?.files || []))
+    }
+
+    function setChecked(index: number, checked: boolean) {
+        songs = songs.map((row, i) => (i === index ? { ...row, checked } : row))
+    }
+
+    function openSong(index: number) {
+        const row = songs[index]
+        if (!row || !row.draft) return
+        openIndex = index
+        draft = row.draft
+        title = row.draft.title
+        ccli = row.draft.ccli || ""
+        author = row.draft.author || ""
+        copyright = row.draft.copyright || ""
+        partLabels = row.draft.parts.map((part) => (PART_LABELS.includes(part.label) ? part.label : "custom"))
+        partCustom = row.draft.parts.map((part) => (PART_LABELS.includes(part.label) ? "" : part.label))
+        partTexts = row.draft.parts.map((part) => part.text)
+        arrangement = row.arrangement.length > 0 ? row.arrangement : defaultArrangement(row.draft)
+        problem = ""
+        pdfProblem = ""
+        duplicate = null
+        parseCount += 1
+    }
+
+    function closePreview() {
+        openIndex = null
+        draft = null
+        problem = ""
+        pdfProblem = ""
+        duplicate = null
+    }
+
+    async function importAll() {
+        if (saving) return
+        report = ""
+        const next = songs.map((row) => ({ ...row }))
+        const selected = next.filter((row) => row.checked && row.ready && !row.done)
+        if (selected.length === 0) {
+            report = "Check at least one song to import."
+            return
+        }
+        let imported = 0
+        let skipped = 0
+        for (const row of selected) {
+            const draft = row.draft
+            if (!draft) continue
+            const trimmed = (draft.title || "").trim()
+            if (!trimmed) {
+                row.status = "Give the song a name."
+                continue
+            }
+            if (findSameTitle(trimmed, get(shows))) {
+                skipped += 1
+                continue
+            }
+            const ok = await storeShow(buildLibraryShow(draft, checkName(trimmed), row.arrangement))
+            if (ok) {
+                imported += 1
+                row.done = true
+                row.checked = false
+                row.status = "Imported"
+            } else {
+                row.status = "The song could not be saved. Try again."
+            }
+        }
+        songs = next
+        const failed = next.filter((row) => !row.done && row.status !== "Ready").map((row) => row.fileName)
+        report = importReport(imported, skipped, failed)
+    }
+
     function waitUntilSaveFinishes(): Promise<void> {
         if (get(statusIndicator) !== "saving") return Promise.resolve()
         return new Promise((resolve) => {
@@ -135,7 +239,7 @@
         })
     }
 
-    async function commit(show: Show & { id: string }, displayName: string) {
+    async function storeShow(show: Show & { id: string }): Promise<boolean> {
         saving = true
         try {
             shows.update((list) => ({
@@ -148,13 +252,28 @@
             save()
         } catch (error) {
             console.error(error)
-            problem = "The song could not be saved. Try again."
             saving = false
-            return
+            return false
         }
         saving = false
+        return true
+    }
+
+    async function finishSave(show: Show & { id: string }, displayName: string) {
+        const ok = await storeShow(show)
+        if (!ok) {
+            problem = "The song could not be saved. Try again."
+            return
+        }
         duplicate = null
-        done = `Saved '${displayName}' to the song library.`
+        if (openIndex !== null) {
+            const rowIndex = openIndex
+            openIndex = null
+            draft = null
+            songs = songs.map((row, index) => (index === rowIndex ? { ...row, done: true, checked: false, status: "Imported" } : row))
+        } else {
+            done = `Saved '${displayName}' to the song library.`
+        }
     }
 
     function saveDirect() {
@@ -171,7 +290,7 @@
             return
         }
         const name = checkName(trimmed)
-        void commit(buildLibraryShow(current, name, arrangement), name)
+        void finishSave(buildLibraryShow(current, name, arrangement), name)
     }
 
     function saveAsNew() {
@@ -183,14 +302,14 @@
             return
         }
         const name = checkName(trimmed)
-        void commit(buildLibraryShow(current, name, arrangement), name)
+        void finishSave(buildLibraryShow(current, name, arrangement), name)
     }
 
     function replaceExisting() {
         const current = currentDraft()
         if (!current || !duplicate) return
         const fresh = buildLibraryShow(current, duplicate.name, arrangement)
-        void commit({ ...fresh, id: duplicate.id, name: duplicate.name }, duplicate.name)
+        void finishSave({ ...fresh, id: duplicate.id, name: duplicate.name }, duplicate.name)
     }
 </script>
 
@@ -203,15 +322,16 @@
         {#if done}
             <p data-testid="import-done">{done}</p>
         {:else}
-            <p>Paste the lyrics or choose a text or PDF file. Put the title first, then VERSE 1, CHORUS, and so on.</p>
+            <p>Paste the lyrics or choose one or more files. Put the title first, then VERSE 1, CHORUS, and so on.</p>
             <label>
                 Lyrics
                 <textarea data-testid="import-paste" rows="6" placeholder="Paste the lyrics here: title first, then VERSE 1, CHORUS, ..." value={pasteText} on:change={(event) => (pasteText = event.currentTarget.value)}></textarea>
             </label>
             <label>
-                Or choose a file
-                <input data-testid="import-file" bind:this={fileInput} type="file" accept=".txt,.md,.pdf" on:change={() => (pdfProblem = "")} />
+                Or choose files
+                <input data-testid="import-file" bind:this={fileInput} type="file" multiple accept=".txt,.md,.pdf,.xml,.cho,.crd,.chopro,.usr" on:change={onFilePick} />
             </label>
+            <div data-testid="import-drop" class="drop" on:dragover={(event) => event.preventDefault()} on:drop={onDrop}>Drop song files here</div>
             <button type="button" data-testid="import-parse" disabled={saving} on:click={doImport}>Import</button>
             {#if pdfProblem}
                 <p class="problem" data-testid="import-pdf-empty">{pdfProblem}</p>
@@ -220,7 +340,32 @@
                 <p class="problem" data-testid="import-problem">{problem}</p>
             {/if}
 
+            {#if songs.length > 0}
+                <h3>Songs found</h3>
+                <div data-testid="import-songs">
+                    {#each songs as row, index}
+                        <div class="song" data-testid={"import-song-" + index}>
+                            <label class="check">
+                                <input type="checkbox" data-testid={"import-song-" + index + "-check"} checked={row.checked} disabled={row.done || !row.ready} on:change={(event) => setChecked(index, event.currentTarget.checked)} />
+                            </label>
+                            <span class="song-title">{row.title}</span>
+                            <span class="song-status" data-testid={"import-song-" + index + "-status"}>{row.status}</span>
+                            {#if row.ready && !row.done}
+                                <button type="button" data-testid={"import-song-" + index + "-open"} on:click={() => openSong(index)}>Open</button>
+                            {/if}
+                        </div>
+                    {/each}
+                </div>
+                <button type="button" data-testid="import-all" disabled={saving} on:click={() => void importAll()}>Import selected</button>
+                {#if report}
+                    <p data-testid="import-report">{report}</p>
+                {/if}
+            {/if}
+
             {#if draft}
+                {#if openIndex !== null}
+                    <button type="button" data-testid="import-back-to-list" on:click={closePreview}>Back to the list</button>
+                {/if}
                 {#key parseCount}
                     <div data-testid="import-preview">
                         <label>
@@ -373,6 +518,43 @@
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
+    }
+
+    .drop {
+        padding: 16px 8px;
+        margin-bottom: 12px;
+        text-align: center;
+        font-weight: 600;
+        color: var(--text);
+        background: var(--primary-darkest);
+        border: 2px dashed var(--primary-lighter);
+        border-radius: 8px;
+    }
+
+    .song {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+        margin-bottom: 8px;
+        background: var(--primary-darker);
+        border: 1px solid var(--primary-lighter);
+        border-radius: 8px;
+    }
+
+    .song label.check {
+        display: flex;
+        align-items: center;
+        margin: 0;
+    }
+
+    .song-title {
+        flex: 1;
+        font-weight: 600;
+    }
+
+    .song-status {
+        font-size: 16px;
     }
 
     .problem {
