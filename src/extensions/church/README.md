@@ -36,7 +36,7 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 ## Hymns
 
-`hymns/types.ts` is the shape of a verified hymn: its text, where it was taken from, and the plain reason it is public domain (published in the US by 1930 or earlier, so public domain as of 1 Jan 2026). `hymns/validate.ts` checks a record and a whole catalog against that shape, so a title without a full record — source, public domain reason, every stanza — cannot be loaded. `hymns/catalog.ts` loads the bundled catalog (throwing if any record fails validation) and finds a hymn by id or title. `hymns/draft.ts` turns a hymn into the importer's draft, so a hymn is loadable as a library show or service item. `hymns/bundle/` holds the bundled hymns, one file each; the first bundled hymn is Amazing Grace (Olney Hymns 1779). Pure TypeScript, no stores, no UI.
+`hymns/types.ts` is the shape of a verified hymn: its text, where it was taken from, and the plain reason it is public domain (published in the US by 1930 or earlier, so public domain as of 1 Jan 2026). `hymns/validate.ts` checks a record and a whole catalog against that shape, so a title without a full record — source, public domain reason, every stanza — cannot be loaded. `hymns/catalog.ts` loads the bundled catalog (throwing if any record fails validation) and finds a hymn by id or title. `hymns/draft.ts` turns a hymn into the importer's draft, so a hymn is loadable as a library show or service item. `hymns/bundle/` holds the bundled hymns, one file each; the starter set is the twelve public domain hymns listed in [HYMNS.md](hymns/HYMNS.md), each with a source line and a plain public domain reason. Pure TypeScript, no stores, no UI.
 
 ## Stage display
 
