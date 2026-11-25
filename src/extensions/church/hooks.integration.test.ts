@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import { createRequire } from "node:module"
+import { join } from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("electron", () => ({
@@ -26,5 +29,20 @@ describe("core hooks read the product config", () => {
         process.env.VITEST = "true"
         const { churchAppsCloudAllowed } = await import("../../electron/utils/productConfig")
         expect(churchAppsCloudAllowed()).toBe(true)
+    })
+})
+
+describe("the P0-10 electron hooks survive an upstream merge", () => {
+    const requireFromRepoRoot = createRequire(join(process.cwd(), "package.json"))
+
+    it("registers the church key IPC channel in the electron main process", () => {
+        const main = readFileSync(join(process.cwd(), "src", "electron", "index.ts"), "utf8")
+        expect(main).toContain("ipcMain.on(CHURCH_KEY_CHANNEL, receiveChurchKey)")
+    })
+
+    it("ships the built church crypto in the installer files", () => {
+        const builder = requireFromRepoRoot("./config/building/electron-builder.fork.cjs")
+        expect(builder.files).toContain("build/extensions/**")
+        expect(builder.files).toContain("build/electron/**")
     })
 })

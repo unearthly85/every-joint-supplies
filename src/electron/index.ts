@@ -10,6 +10,7 @@ import { ToMain } from "../types/IPC/ToMain"
 import type { Dictionary } from "../types/Settings"
 import { receiveAudio } from "./audio/receiveAudio"
 import { receiveBM } from "./blackmagic/bmdTalk"
+import { CHURCH_KEY_CHANNEL, receiveChurchKey } from "./church/churchKeyMain"
 import { cloudConnect } from "./cloud/cloud"
 import { startExport } from "./data/export"
 import { cleanupProtectedCache, registerProtectedProtocol } from "./data/protected"
@@ -422,6 +423,7 @@ ipcMain.on(NDI, receiveNDI)
 ipcMain.on(OMT, receiveOMT)
 ipcMain.on(BLACKMAGIC, receiveBM)
 ipcMain.on(AUDIO, receiveAudio)
+ipcMain.on(CHURCH_KEY_CHANNEL, receiveChurchKey)
 
 // send messages to main frontend (should not be used anymore - use sendMain() instead)
 export const toApp = (channel: string, ...args: any[]): void => {
