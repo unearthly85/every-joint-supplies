@@ -54,6 +54,8 @@ The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volu
 
 `crypto/vault.ts` is the record vault for a host folder (P0-10 e4): the service records — shows, service plans (projects), and our Sunday order — are sealed one per record under the church key, with a context that binds each record to its kind and a keyed BLAKE2b tag of its id, and stored under that same tag as the file name, so the node or any host folder holds only ciphertext and a file copied over another record fails to open; `memoryFolder` is the in-memory folder for tests and the P0-11 loopback. Pure TypeScript, no UI, no disk I/O.
 
+`crypto/disk.ts` is the real-folder version of those pieces (P0-10 e5): `diskFolder` is a `HostFolder` backed by a directory of `.ejs` files (a missing dir or file is empty, writes are atomic through a `.part` file that is renamed into place, and names containing `/`, `\`, or `..` are rejected), and `saveChurchKeyFile` / `loadChurchKeyFile` keep the church key file (`church-key.json`, mode 0o600) in the same folder — the file holds only the encrypted key slots, never the key, passphrase, or recovery code. Node `fs` only, no Electron, no UI.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
