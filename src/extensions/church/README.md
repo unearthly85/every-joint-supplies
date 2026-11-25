@@ -38,6 +38,8 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `hymns/types.ts` is the shape of a verified hymn: its text, where it was taken from, and the plain reason it is public domain (published in the US by 1930 or earlier, so public domain as of 1 Jan 2026). `hymns/validate.ts` checks a record and a whole catalog against that shape, so a title without a full record — source, public domain reason, every stanza — cannot be loaded. `hymns/catalog.ts` loads the bundled catalog (throwing if any record fails validation) and finds a hymn by id or title. `hymns/draft.ts` turns a hymn into the importer's draft, so a hymn is loadable as a library show or service item. `hymns/bundle/` holds the bundled hymns, one file each; the starter set is the twelve public domain hymns listed in [HYMNS.md](hymns/HYMNS.md), each with a source line and a plain public domain reason. Pure TypeScript, no stores, no UI.
 
+`hymns/search.ts` adds hymn title search for the "Add a hymn" box: `normalizeTitle` strips case, punctuation, and parentheses from a typed name, `titlesOf` lists a hymn's title, aliases, and first line, `matchTitle` returns the single best match for a Hymnbase-style lookup (exact id, title, or alias, then a unique starts-with hit, then a unique contains hit; a tie returns null rather than a guess), and `searchHymns` returns the ranked, deduplicated list for type-ahead. Pure TypeScript, no stores, no UI.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
