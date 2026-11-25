@@ -2,6 +2,8 @@ export { ENVELOPE_ALG, ENVELOPE_VERSION, EnvelopeError, envelopeToString, isEnve
 export type { Envelope } from "./envelope"
 export { DEFAULT_KDF, deriveKek, isKeySlot, MIN_KDF, unwrapKey, wrapKey, WrongSecretError } from "./keyslot"
 export type { KdfParams, KeySlot, SlotKind } from "./keyslot"
+export { changePassphrase, churchKeyFileToString, createChurchKey, isChurchKeyFile, newRecoverySlot, parseChurchKeyFile, unlockWithPassphrase, unlockWithRecoveryCode } from "./orgKey"
+export type { ChurchKeyFile, NewChurchKey } from "./orgKey"
 export { newRecoveryCode, normalizeRecoveryCode } from "./recovery"
 export { getSodium } from "./sodium"
 export type { Sodium } from "./sodium"
