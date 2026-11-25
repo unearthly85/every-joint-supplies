@@ -1,0 +1,46 @@
+{
+  "note": "Fixed test vectors for P0-10, generated with libsodium-wrappers-sumo 0.8.4 (libsodium 1.0.22). Made-up data only. Do not edit.",
+  "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "kid": "f1aef60623588489",
+  "envelope": {
+    "aad": "ejs:1|xchacha20poly1305-ietf|f1aef60623588489|ejs:test:vector",
+    "plaintext": "{\"name\":\"Lantern Hymn\",\"lyrics\":\"Little lantern on the hill, shine on\"}",
+    "value": {
+      "ejs": 1,
+      "alg": "xchacha20poly1305-ietf",
+      "kid": "f1aef60623588489",
+      "ctx": "ejs:test:vector",
+      "n": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZX",
+      "ct": "rxtrEb2FWyytuObQ2/kX/LLy1Kl9e3+4BkiPLGp3Aao0tWsaIf7hMJPTmjhvqLTR9AVdnAfglPTfkGTYM8EkPTRO2B16kTg7JCIudaTu+mbfaeOn2XP6"
+    }
+  },
+  "argon2id": {
+    "password": "correct horse lantern",
+    "saltHex": "101112131415161718191a1b1c1d1e1f",
+    "ops": 2,
+    "mem": 67108864,
+    "outLen": 32,
+    "outHex": "ca19463c867cf5da053e405287db41a9e200cb590235b89b5db9286a2c6c0f63",
+    "kekKid": "1f155db9692f899b"
+  },
+  "keyslot": {
+    "passphrase": "correct horse lantern",
+    "unwrapsToKeyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "value": {
+      "ejs": 1,
+      "kind": "passphrase",
+      "kdf": "argon2id13",
+      "ops": 2,
+      "mem": 67108864,
+      "salt": "EBESExQVFhcYGRobHB0eHw==",
+      "env": {
+        "ejs": 1,
+        "alg": "xchacha20poly1305-ietf",
+        "kid": "1f155db9692f899b",
+        "ctx": "ejs:keyslot:passphrase",
+        "n": "YGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3",
+        "ct": "wq+65sAUTKkz50rYxOx4kH1tZ2ozB6pG79+xz7a5OqT9Sj9ZoTUTs2Ozdl1xKkOQ"
+      }
+    }
+  }
+}
