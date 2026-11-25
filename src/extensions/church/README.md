@@ -52,6 +52,8 @@ The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volu
 
 `crypto/orgKey.ts` is the church (org) key file (P0-10 e3): one 32-byte key per church, wrapped in two slots — under the volunteer's passphrase (at least 8 characters) and under the written-down recovery code — with the key id in the file, so a slot swapped in from another church's file can never unlock it; `changePassphrase` and `newRecoverySlot` re-wrap the key without touching the other slot. Pure TypeScript, no UI, no disk I/O; the per-person key of Phase 1 will sit beside it, not inside it.
 
+`crypto/vault.ts` is the record vault for a host folder (P0-10 e4): the service records — shows, service plans (projects), and our Sunday order — are sealed one per record under the church key, with a context that binds each record to its kind and a keyed BLAKE2b tag of its id, and stored under that same tag as the file name, so the node or any host folder holds only ciphertext and a file copied over another record fails to open; `memoryFolder` is the in-memory folder for tests and the P0-11 loopback. Pure TypeScript, no UI, no disk I/O.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
