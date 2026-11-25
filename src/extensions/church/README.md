@@ -56,6 +56,8 @@ The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volu
 
 `crypto/disk.ts` is the real-folder version of those pieces (P0-10 e5): `diskFolder` is a `HostFolder` backed by a directory of `.ejs` files (a missing dir or file is empty, writes are atomic through a `.part` file that is renamed into place, and names containing `/`, `\`, or `..` are rejected), and `saveChurchKeyFile` / `loadChurchKeyFile` keep the church key file (`church-key.json`, mode 0o600) in the same folder — the file holds only the encrypted key slots, never the key, passphrase, or recovery code. Node `fs` only, no Electron, no UI.
 
+`keys/churchKeys.ts` is the church key service (P0-10 e6): the one place that holds the unlocked church key in memory. `ChurchKeys` does the first-time setup (with a group check against the written-down recovery code), unlock by passphrase or recovery code, "forget on this computer", and `saveChurchCopy` (every record sealed under the key into a host folder). Each computer remembers the unlocked key in `remembered.bin` through a `KeyProtector` — the OS protected storage, backed by Electron safeStorage in e6x — and when the OS has no safe store the key is not remembered and the passphrase is asked at each start. The key never leaves the service: no method returns it. Pure TypeScript, no Electron, no UI.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
