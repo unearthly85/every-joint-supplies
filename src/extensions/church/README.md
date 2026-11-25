@@ -46,6 +46,10 @@ The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volu
 
 `crypto/` holds the church encryption pieces. The library is `libsodium-wrappers-sumo` 0.8.4: XChaCha20-Poly1305 envelopes with a version and a key id (`envelope.ts`), and Argon2id for passphrases (a later step). Keys are never logged, printed, or put into error messages.
 
+`crypto/keyslot.ts` is the key slot: a 32-byte key encrypted under a key that Argon2id (never weaker than the interactive cost) derives from a secret — a passphrase or a recovery code, NFKC-normalized — and a fresh 16-byte salt, sealed in an envelope under the label `ejs:keyslot:<kind>`; a wrong secret gives one fixed `WrongSecretError` that never names the secret. The slot format is generic, so Phase 1 reuses it for the per-person PIN backup.
+
+`crypto/recovery.ts` makes and normalizes the recovery code a volunteer writes down: 15 random bytes (120 bits) as 24 Crockford base32 characters (no I, L, O, U) in 6 groups of 4, and `normalizeRecoveryCode` accepts the code typed with lowercase, spaces, O for 0, or I/L for 1.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
