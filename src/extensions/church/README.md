@@ -34,6 +34,10 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `importer/SongImport.svelte` is the review screen in the New Sunday panel: the volunteer pastes or drops the lyrics, checks the detected parts and labels, and saves the song to the library — or, when a song with the same name already exists, saves it as a new song or replaces the saved one in place. Several files at once (file picker or drag-and-drop) fill a songs-found list instead: one row per song with a check box, a plain status, and an Open button that loads the song into the same preview-and-fix view (saving it returns to the list with the song marked done). "Import selected" saves the checked songs, skips same-title songs instead of overwriting them, and reports what was imported, skipped, and failed. A single text, Markdown, or PDF file keeps the one-song flow.
 
+## Hymns
+
+`hymns/types.ts` is the shape of a verified hymn: its text, where it was taken from, and the plain reason it is public domain (published in the US by 1930 or earlier, so public domain as of 1 Jan 2026). `hymns/validate.ts` checks a record and a whole catalog against that shape, so a title without a full record — source, public domain reason, every stanza — cannot be loaded. `hymns/catalog.ts` loads the bundled catalog (throwing if any record fails validation) and finds a hymn by id or title. `hymns/draft.ts` turns a hymn into the importer's draft, so a hymn is loadable as a library show or service item. `hymns/bundle/` holds the bundled hymns, one file each; the first bundled hymn is Amazing Grace (Olney Hymns 1779). Pure TypeScript, no stores, no UI.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
