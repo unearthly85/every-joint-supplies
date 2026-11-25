@@ -108,7 +108,8 @@ These are the upstream files we edit, and why. New behavior should not add to th
 | `src/frontend/utils/startup.ts`, `cloudSync.ts` | No ChurchApps startup sync and no "connect cloud" prompt. |
 | `src/frontend/components/settings/tabs/Files.svelte`, `Connection.svelte` | ChurchApps connect / sync controls are hidden. |
 | `src/electron/utils/productConfig.ts` | **New file** in the Electron tree. Reads `product.json` for the main process. |
-| `src/electron/index.ts` | `app.setName` and the window title come from `product.json`. |
+| `src/electron/index.ts` | `app.setName` and the window title come from `product.json`, and registers the church key IPC channel (P0-10). |
+| `src/electron/church/churchKeyMain.ts` | **New file** in the Electron tree. Church key IPC: setup, unlock, remember via safeStorage, forget, save church copy. The key never goes to the renderer. |
 | `src/electron/contentProviders/ContentProviderRegistry.ts` | Refuses ChurchApps connect and startup load while the flag is off. |
 | `src/electron/cloud/syncManager.ts` | Refuses ChurchApps upload, merge, and restore while the flag is off. |
 | `src/frontend/utils/createData.ts` | Default watermark text uses our product name. |

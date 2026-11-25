@@ -67,6 +67,7 @@ console.log(`[every-joint] Windows signing: ${hasAuthenticode ? "Authenticode ce
 
 module.exports = {
     ...base,
+    files: [...base.files, "build/extensions/**"],
     appId: product.appId,
     productName: product.productName,
     executableName: product.executableName,
