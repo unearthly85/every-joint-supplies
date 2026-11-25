@@ -1,3 +1,4 @@
+export { CHURCH_KEY_FILE, diskFolder, loadChurchKeyFile, saveChurchKeyFile } from "./disk"
 export { ENVELOPE_ALG, ENVELOPE_VERSION, EnvelopeError, envelopeToString, isEnvelope, keyId, newKey, open, openText, parseEnvelope, seal, sealText } from "./envelope"
 export type { Envelope } from "./envelope"
 export { DEFAULT_KDF, deriveKek, isKeySlot, MIN_KDF, unwrapKey, wrapKey, WrongSecretError } from "./keyslot"
