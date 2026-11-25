@@ -1,7 +1,14 @@
 <script lang="ts">
     import { get } from "svelte/store"
-    import { outputs, projects, shows, showsCache } from "../../frontend/stores"
+    import { outputs, projects, shows, showsCache, statusIndicator } from "../../frontend/stores"
+    import { checkName } from "../../frontend/components/helpers/show"
     import { loadShows } from "../../frontend/components/helpers/setShow"
+    import { save } from "../../frontend/utils/save"
+    import type { Show } from "../../types/Show"
+    import { buildLibraryShow, findSameTitle } from "./importer/save"
+    import { hymnToDraft } from "./hymns/draft"
+    import { searchHymns } from "./hymns/search"
+    import type { HymnRecord } from "./hymns/types"
     import { appendPart, applyServiceSequence, arrangementName, layoutForOrder, movePart, nextAfterJump, nextHint, orderTitles, readLayoutOrder, saveAsNewArrangement, skipPart, songChoices } from "./service/arrangement"
 
     export let showId = ""
@@ -17,11 +24,15 @@
     $: serviceDate = ($projects[projectId] as { church?: { date?: string } } | undefined)?.church?.date || ""
     let query = ""
     let pendingId = ""
+    let pendingName = ""
+    let hymnQuery = ""
+    let hymnSaving = false
     $: matches = songChoices(
         Object.entries($shows).map(([id, show]) => ({ id, name: show?.name, origin: show?.origin, category: show?.category })),
         showId,
         query
     )
+    $: hymnMatches = searchHymns(hymnQuery)
 
     $: liveIndex = liveSlideIndex(showId, $outputs)
     $: next = liveIndex == null ? null : nextAfterJump(order, labels, liveIndex)
@@ -108,6 +119,56 @@
         void useLibrary(id)
     }
 
+    function waitUntilSaveFinishes(): Promise<void> {
+        if (get(statusIndicator) !== "saving") return Promise.resolve()
+        return new Promise((resolve) => {
+            let unsubscribe = () => {}
+            unsubscribe = statusIndicator.subscribe((value) => {
+                if (value === "saving") return
+                unsubscribe()
+                resolve()
+            })
+        })
+    }
+
+    async function storeHymnShow(show: Show & { id: string }): Promise<boolean> {
+        hymnSaving = true
+        try {
+            shows.update((list) => ({
+                ...list,
+                [show.id]: { name: show.name, origin: show.origin, category: show.category, timestamps: show.timestamps }
+            }))
+            showsCache.update((cache) => ({ ...cache, [show.id]: show }))
+            // A save already in progress captured the previous snapshot. Wait, then save this hymn too.
+            await waitUntilSaveFinishes()
+            save()
+        } catch (error) {
+            console.error(error)
+            hymnSaving = false
+            return false
+        }
+        hymnSaving = false
+        return true
+    }
+
+    async function chooseHymn(hymn: HymnRecord) {
+        if (hymnSaving) return
+        const draft = hymnToDraft(hymn)
+        const existing = findSameTitle(draft.title, get(shows))
+        let id = existing ? existing.id : ""
+        if (!id) {
+            const show = buildLibraryShow(draft, checkName(draft.title))
+            if (!(await storeHymnShow(show))) return
+            id = show.id
+        }
+        if (order.length) {
+            pendingId = id
+            pendingName = draft.title
+            return
+        }
+        void useLibrary(id)
+    }
+
     function allowDrop(event: DragEvent) {
         event.preventDefault()
     }
@@ -153,8 +214,17 @@
                     <button type="button" data-testid={"song-result-" + saved.id} on:click={() => chooseSong(saved.id)}>{saved.name}</button>
                 {/each}
             </div>
+            <label>
+                Add a hymn
+                <input data-testid="hymn-search" placeholder="Search hymns" bind:value={hymnQuery} />
+            </label>
+            <div data-testid="hymn-results">
+                {#each hymnMatches as hymn (hymn.id)}
+                    <button type="button" data-testid={"hymn-result-" + hymn.id} disabled={hymnSaving} on:click={() => chooseHymn(hymn)}>{hymn.title}</button>
+                {/each}
+            </div>
             {#if pendingId}
-                <p>Replace this Sunday's song with {matches.find((item) => item.id === pendingId)?.name || "this song"}?</p>
+                <p>Replace this Sunday's song with {matches.find((item) => item.id === pendingId)?.name || pendingName || "this song"}?</p>
                 <button type="button" data-testid="confirm-replace" on:click={() => { const id = pendingId; pendingId = ""; void useLibrary(id) }}>Replace song</button>
                 <button type="button" data-testid="cancel-replace" on:click={() => (pendingId = "")}>Keep this song</button>
             {/if}

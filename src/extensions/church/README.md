@@ -40,6 +40,8 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 `hymns/search.ts` adds hymn title search for the "Add a hymn" box: `normalizeTitle` strips case, punctuation, and parentheses from a typed name, `titlesOf` lists a hymn's title, aliases, and first line, `matchTitle` returns the single best match for a Hymnbase-style lookup (exact id, title, or alias, then a unique starts-with hit, then a unique contains hit; a tie returns null rather than a guess), and `searchHymns` returns the ranked, deduplicated list for type-ahead. Pure TypeScript, no stores, no UI.
 
+The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volunteer-facing end of that: type a hymn name, pick a bundled hymn from the results, and it is saved to the song library (reused when a song with the same name already exists) and applied to this Sunday's song through the same replace-and-confirm flow as choosing a saved song.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
