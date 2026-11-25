@@ -42,6 +42,10 @@ This folder is ours. Upstream FreeShow code stays where it is. New worship-prese
 
 The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volunteer-facing end of that: type a hymn name, pick a bundled hymn from the results, and it is saved to the song library (reused when a song with the same name already exists) and applied to this Sunday's song through the same replace-and-confirm flow as choosing a saved song.
 
+## Encryption
+
+`crypto/` holds the church encryption pieces. The library is `libsodium-wrappers-sumo` 0.8.4: XChaCha20-Poly1305 envelopes with a version and a key id (`envelope.ts`), and Argon2id for passphrases (a later step). Keys are never logged, printed, or put into error messages.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.
