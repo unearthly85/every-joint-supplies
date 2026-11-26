@@ -58,6 +58,10 @@ The "Add a hymn" box on the Sunday song panel (`SundayOrder.svelte`) is the volu
 
 `keys/churchKeys.ts` is the church key service (P0-10 e6): the one place that holds the unlocked church key in memory. `ChurchKeys` does the first-time setup (with a group check against the written-down recovery code), unlock by passphrase or recovery code, "forget on this computer", and `saveChurchCopy` (every record sealed under the key into a host folder). Each computer remembers the unlocked key in `remembered.bin` through a `KeyProtector` — the OS protected storage, backed by Electron safeStorage in e6x — and when the OS has no safe store the key is not remembered and the passphrase is asked at each start. The key never leaves the service: no method returns it. Pure TypeScript, no Electron, no UI.
 
+`keys/client.ts` is the renderer side of that service (P0-10 e7): a small promise client for the one IPC channel. Each request gets a unique id, sends `{ id, action, ...payload }`, and waits for the one reply that carries that id — an ok reply resolves the result, a not-ok reply rejects the plain error text, and no reply in time rejects "The church files did not answer. Try again." The channel string is hard-coded in this file, so the renderer never imports from `src/electron`. Pure TypeScript, unit tested, no UI.
+
+`ChurchFiles.svelte` is the "Church files" block on the New Sunday panel (P0-10 e7): set up this church (a passphrase, and a recovery code shown once with a group the volunteer types back), unlock with the passphrase or the recovery code, save a church copy, and forget on this computer. It talks to the service only through `keys/client.ts`, shows every failure as plain text, clears the password inputs after each request, and uses one-way handlers only (no `bind:value` write-back). The volunteer never sees the words key, encrypt, cipher, or Argon.
+
 ## Stage display
 
 `stage/layout.ts` builds the default stage layout (current words, part label, next words and item, clock, notes, and a stage message) and reads or sets the notes, chords, and message switches on it.

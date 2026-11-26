@@ -11,6 +11,7 @@
     import { save } from "../../frontend/utils/save"
     import { canonicalClock, countdownLine, FAITH_COVENANT_SUNDAY, faithCovenantSunday, formatClock, nextSunday, parseClock, resolveCountdownSeconds, toStored, type TimingMode } from "./service/model"
     import SongImport from "./importer/SongImport.svelte"
+    import ChurchFiles from "./ChurchFiles.svelte"
     import ProgramScreen from "./ProgramScreen.svelte"
     import StageScreen from "./StageScreen.svelte"
 
@@ -187,6 +188,7 @@
                     <button data-testid="import-song" type="button" on:click={() => (showImporter = true)}>Import a song</button>
                     <StageScreen />
                     <ProgramScreen />
+                    <ChurchFiles />
                 {/if}
             </div>
 
