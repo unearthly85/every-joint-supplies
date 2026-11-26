@@ -82,7 +82,7 @@ These are the upstream files we edit, and why. New behavior should not add to th
 
 | File | Why |
 |---|---|
-| `package.json` | Description, author, and `repository` point at this fork. `release` / `release:local` use the fork builder config and `--publish never`. `test:e2e:sunday` runs the Sunday e2e files under `config/testing/` (church-present, church-handoff, church-order, church-stage, church-program, church-keyable, church-audio, church-import, church-bulk, church-hymns). `dependencies` adds `libsodium-wrappers-sumo` (P0-10 crypto). |
+| `package.json` | Description, author, and `repository` point at this fork. `release` / `release:local` use the fork builder config and `--publish never`. `test:e2e:sunday` runs the Sunday e2e files under `config/testing/` (church-present, church-handoff, church-order, church-stage, church-program, church-keyable, church-audio, church-import, church-bulk, church-hymns, church-key). `dependencies` adds `libsodium-wrappers-sumo` (P0-10 crypto). |
 | `scripts/preBuild.js` | Copies `product.json` to `public/brand/product.json` and refreshes `data-ejs-product` titles. |
 | `public/index.html`, `public/loading.html` | Window and splash titles. Loading screen reads `product.json` at runtime. |
 | `src/server/stage/index.html`, `src/server/remote/index.html` | Stage and remote document titles. |
